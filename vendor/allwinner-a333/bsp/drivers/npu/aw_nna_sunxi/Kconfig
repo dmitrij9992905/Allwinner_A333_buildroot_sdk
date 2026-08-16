@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Allwinner aw nna sunxi platform driver Kconfig
+#
+# Copyright(c) 2024 Allwinnertech Co., Ltd.
+
+config AW_NNA_SUNXI
+	tristate "aw nna sunxi driver"
+	depends on ARCH_SUNXI
+	default n
+	help
+	  Choose Y or M to enable aw nna sunxi driver

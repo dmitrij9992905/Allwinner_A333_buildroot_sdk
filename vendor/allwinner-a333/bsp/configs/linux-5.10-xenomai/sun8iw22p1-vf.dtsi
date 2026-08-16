@@ -1,0 +1,44 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+/{
+	vf_mapping_table: vf_mapping_table {
+		vf-version = "V0.1";
+		table = <
+			0x00 0x0000
+			>;
+	};
+
+	cluster_opp_table: cluster_opp_table {
+		compatible = "allwinner,sun50i-operating-points";
+		opp-shared;
+
+		opp@1080000000 {
+			opp-hz = /bits/ 64 <1080000000>;
+			clock-latency-ns = <244144>; /* 8 32k periods */
+			opp-microvolt-vf0000 = <1100000>;
+		};
+
+		opp@1368000000 {
+			opp-hz = /bits/ 64 <1368000000>;
+			clock-latency-ns = <244144>; /* 8 32k periods */
+			opp-microvolt-vf0000 = <1100000>;
+		};
+
+		opp@1536000000 {
+			opp-hz = /bits/ 64 <1536000000>;
+			clock-latency-ns = <244144>; /* 8 32k periods */
+			opp-microvolt-vf0000 = <1100000>;
+		};
+
+		opp@1632000000 {
+			opp-hz = /bits/ 64 <1632000000>;
+			clock-latency-ns = <244144>; /* 8 32k periods */
+			opp-microvolt-vf0000 = <1100000>;
+		};
+
+		opp@1776000000 {
+			opp-hz = /bits/ 64 <1776000000>;
+			clock-latency-ns = <244144>; /* 8 32k periods */
+			opp-microvolt-vf0000 = <1100000>;
+		};
+	};
+};

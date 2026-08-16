@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) 2019 Allwinner Technology Limited. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * Author: Albert Yu <yuxyun@allwinnertech.com>
+ */
+
+#ifndef _PLATFORM_H_
+#define _PLATFORM_H_
+
+#define BASE_MAX_NR_EXTRA_CLOCKS (2)
+#define SUNXI_MAX_CLOCKS (5)
+
+char *SUNXI_CLOCK_NAMES[SUNXI_MAX_CLOCKS] = {
+	"clk_800",
+	"clk_600",
+	"clk_400",
+	"clk_300",
+	"clk_200"
+};
+
+#define CLK_IDX_800 (0)
+#define CLK_IDX_600 (1)
+#define CLK_IDX_400 (2)
+#define CLK_IDX_300 (3)
+#define CLK_IDX_200 (4)
+
+enum scene_ctrl_cmd {
+	SCENE_CTRL_NORMAL_MODE,
+	SCENE_CTRL_PERFORMANCE_MODE
+};
+
+struct reg {
+	unsigned long phys;
+	void __iomem *ioaddr;
+};
+
+struct sunxi_regs {
+	struct reg drm;
+};
+
+struct sunxi_data {
+	struct sunxi_regs regs;
+	struct clk *pll_gpu;
+	struct clk *sunxi_clocks[SUNXI_MAX_CLOCKS];
+	struct reset_control *reset[BASE_MAX_NR_EXTRA_CLOCKS];
+	bool idle_ctrl;
+	bool dvfs_ctrl;
+	bool independent_power;
+	bool sence_ctrl;
+	bool power_on;
+	bool is_resume_pll_gpu;
+	bool is_perclk_set;
+	struct mutex sunxi_lock;
+	unsigned long max_freq;
+	unsigned long max_u_volt;
+	unsigned long current_freq;
+	unsigned long last_pll_gpu_freq;
+	unsigned long current_u_volt;
+	struct kbasep_pm_metrics sunxi_last;
+	struct clk *extra_gpu_clk[BASE_MAX_NR_EXTRA_CLOCKS];
+};
+
+#endif /* _PLATFORM_H_ */

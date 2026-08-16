@@ -1,0 +1,263 @@
+// SPDX-License-Identifier: (GPL-2.0+ or MIT)
+/*
+ * Allwinner Technology CO., Ltd. sun65iw1p1 platform
+ *
+ * modify base on juno.dts
+ */
+
+&target {
+	auto_fel = <0>;
+	dragonboard_test = <0>;	/*1:support card boot dragonboard; 0:not support card boot dragonboard*/
+};
+
+&pio {
+	spi0_pins_default: spi0@0 {
+		pins = "PC0", "PC2", "PC3"; /* clk, mosi, miso */
+		function = "spi0";
+		drive-strength = <10>;
+	};
+
+	spi0_pins_cs: spi0@1 {
+		pins = "PC1", "PC4", "PC5";
+		function = "spi0";
+		drive-strength = <10>;
+		bias-pull-up;   /* cs, hold, wp should be pulled up */
+	};
+
+	twi5_pins_a: twi5@0 {
+		allwinner,pins = "PH18", "PH19";
+		allwinner,pname = "twi5_scl", "twi5_sda";
+		allwinner,function = "twi5";
+		allwinner,muxsel = <2>;
+		allwinner,drive = <1>;
+		allwinner,pull = <1>;
+	};
+
+	twi5_pins_b: twi5@1 {
+		allwinner,pins = "PH18", "PH19";
+		allwinner,function = "gpio_out";
+		allwinner,muxsel = <1>;
+		allwinner,drive = <1>;
+		allwinner,pull = <1>;
+	};
+
+};
+
+&mmc0 {
+	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>;	/* PF6 */
+	bus-width = <4>;
+	status = "okay";
+};
+
+&mmc2 {
+	bus-width = <4>;
+	cap-mmc-highspeed;
+	mmc-ddr-1_8v;
+	max-frequency = <50000000>;
+	sdc_ex_dly_used = <2>;
+    status = "disabled";
+};
+
+&spi0  {
+	pinctrl-0 = <&spi0_pins_default>, <&spi0_pins_cs>;
+	pinctrl-names = "default";
+	status = "disabled";
+
+	flash@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+		spi-rx-bus-width = <4>;
+		spi-tx-bus-width = <4>;
+		status = "disabled";
+	};
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_ph_pins>;
+	status = "okay";
+};
+
+&platform {
+	eraseflag   = <1>;
+	next_work   = <3>;
+	debug_mode  = <1>;
+};
+
+&target {
+	boot_clock = <1008>;	/*CPU boot frequency, Unit: MHz*/
+	storage_type = <0xffffffff>; /*boot medium, 0-nand, 1-card0, 2-card2, -1(defualt)auto scan*/
+	burn_key = <1>;		/*1:support burn key; 0:not support burn key*/
+	dragonboard_test = <0>;	/*1:support card boot dragonboard; 0:not support card boot dragonboard*/
+};
+
+&power_sply {
+	battery_exist = <0>;
+};
+
+&charger0 {
+};
+
+&twi5 {
+	clock-frequency = <200000>;
+	pinctrl-0 = <&twi5_pins_a>;
+	pinctrl-1 = <&twi5_pins_b>;
+	twi-supply = <&reg_cldo3>;
+	status = "okay";
+};
+
+&twi6 {
+	clock-frequency = <200000>;
+	pinctrl-0 = <&s_twi0_pins_a>;
+	pinctrl-1 = <&s_twi0_pins_b>;
+	status = "okay";
+	twi-supply = <&reg_aldo3>;
+	pmu0: pmu@34 {
+		compatible = "x-powers,axp2202";
+		regulator0: regulators@0 {
+			reg_dcdc1: dcdc1 {
+				regulator-name = "axp2202-dcdc1";
+			};
+			reg_dcdc2: dcdc2 {
+				regulator-name = "axp2202-dcdc2";
+			};
+			reg_dcdc3: dcdc3 {
+				regulator-name = "axp2202-dcdc3";
+			};
+			reg_rtcldo: rtcldo {
+				/* RTC_LDO is a fixed, always-on regulator */
+				regulator-name = "axp2202-rtcldo";
+			};
+			reg_aldo1: aldo1 {
+				regulator-name = "axp2202-aldo1";
+			};
+			reg_aldo2: aldo2 {
+				regulator-name = "axp2202-aldo2";
+			};
+			reg_aldo3: aldo3 {
+				regulator-name = "axp2202-aldo3";
+			};
+			reg_aldo4: aldo4 {
+				regulator-name = "axp2202-aldo4";
+			};
+			reg_bldo1: bldo1 {
+				regulator-name = "axp2202-bldo1";
+			};
+			reg_bldo2: bldo2 {
+				regulator-name = "axp2202-bldo2";
+			};
+			reg_bldo3: bldo3 {
+				regulator-name = "axp2202-bldo3";
+			};
+			reg_bldo4: bldo4 {
+				regulator-name = "axp2202-bldo4";
+			};
+			reg_cldo1: cldo1 {
+				regulator-name = "axp2202-cldo1";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+			};
+			reg_cldo2: cldo2 {
+				regulator-name = "axp2202-cldo2";
+			};
+			reg_cldo3: cldo3 {
+				regulator-name = "axp2202-cldo3";
+			};
+			reg_cldo4: cldo4 {
+				regulator-name = "axp2202-cldo4";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3500000>;
+				regulator-enable-ramp-delay = <1000>;
+			};
+			reg_cpusldo: cpusldo {
+				regulator-name = "axp2202-cpusldo";
+			};
+		};
+	};
+
+	pmu1: pmu@36 {
+		compatible = "x-powers,axp1530";
+		status = "okay";
+
+		regulator1: regulators@1 {
+			reg_ext_dcdc1: ext_dcdc1 {
+				regulator-name = "axp1530-ext_dcdc1";
+			};
+			reg_ext_dcdc2: ext_dcdc2 {
+				regulator-name = "axp1530-ext_dcdc2";
+			};
+			reg_ext_dcdc3: ext_dcdc3 {
+				regulator-name = "axp1530-ext_dcdc3";
+			};
+			reg_ext_aldo1: ext_aldo1 {
+				regulator-name = "axp1530-ext_aldo1";
+			};
+			reg_ext_dldo1: ext_dldo1 {
+				regulator-name = "axp1530-ext_ldo1";
+			};
+		};
+	};
+};
+
+&card0_boot_para {  /* Avoid dtc compiling warnings. @TODO: Developer should modify this to the actual value */
+	/* reg = <0x0 0x2 0x0 0x0>;  [> Avoid dtc compiling warnings. @TODO: Developer should modify this to the actual value <] */
+	device_type = "card0_boot_para";
+	card_ctrl = <0x0>;
+	card_high_speed = <0x1>;
+	card_line = <0x4>;
+	clk_mmc = "sdmmc0_mod";
+	pll-0 = "hosc";
+	pll-1 = "pll_periph1_400m";
+	pll-2 = "pll_periph1_300m";
+	clk_type = "typ1";
+};
+
+&card2_boot_para {
+	/*
+	* Avoid dtc compiling warnings.
+	* @TODO: Developer should modify this to the actual value
+	*/
+	reg = <0x0 0x3 0x0 0x0>;
+	device_type = "card2_boot_para";
+	card_ctrl = <0x2>;
+	card_high_speed = <0x1>;
+	card_line = <0x8>;
+	clk_mmc = "sdmmc2_mod";
+	pll-0 = "hosc";
+	pll-1 = "pll_periph1_800m";
+	pll-2 = "pll_periph1_600m";
+	sdc_ex_dly_used = <0x2>;
+	sdc_tm4_hs200_max_freq = <100>;
+	sdc_tm4_hs400_max_freq = <100>;
+	sdc_tm4_win_th = <0x7>;
+	sdc_io_1v8 = <0x1>;
+	sdc_type = "tm4";
+	clk_type = "typ1";
+};
+
+&pwm0_pin_active {
+		allwinner,pins = "PD23";
+		allwinner,function = "pwm0";
+		allwinner,muxsel = <0x2>;
+		allwinner,drive = <3>;
+		allwinner,pull = <2>;
+};
+
+&pwm0_pin_sleep {
+		allwinner,pins = "PD23";
+		allwinner,function = "io_disabled";
+		allwinner,muxsel = <0xf>;
+		allwinner,drive = <3>;
+		allwinner,pull = <2>;
+};
+
+&pwm0 {
+	pinctrl-names = "active","sleep";
+	pinctrl-0 = <&pwm0_pin_active>;
+	pinctrl-1 = <&pwm0_pin_sleep>;
+	status = "okay";
+};

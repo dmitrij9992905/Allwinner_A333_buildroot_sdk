@@ -1,0 +1,4 @@
+config SUNXI_CHIPS
+	bool "Sunxi Chips driver"
+	help
+	  Enable support for chips on the Sunxi SoCs.

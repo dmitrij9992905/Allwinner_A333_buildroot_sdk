@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: GPL-2.0
+
+if TYPEC_TCPM
+
+config AW_TYPEC_TCPCI
+	tristate "Allwinner Type-C Port Controller Interface driver (Non-Standard)"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  Allwinner Type-C Port Controller driver for TCPCI-compliant controller.
+
+	  The USB Type-C Port Controller Interface Specification define Standard TCPC
+	  register map. However, the TCPC register of Allwinner self-developed PD PHY
+	  integrated into the PMIC chip has a specific offset.
+
+if AW_TYPEC_TCPCI
+
+config TYPEC_AXP517
+	tristate "Allwinner AXP517 Type-C chip driver"
+	depends on USB_SUNXI_TYPEC
+	depends on I2C
+	help
+	  Allwinner AXP517 Type-C chip driver that works with
+	  Type-C Port Controller Manager to provide USB PD and USB
+	  Type-C functionalities.
+
+	  If unsure, say N.
+
+endif # AW_TYPEC_TCPCI
+
+endif # TYPEC_TCPM

@@ -1,0 +1,7 @@
+# https://www.ruby-lang.org/en/news/2026/06/30/ruby-3-4-10-released/
+sha512  c28d59946c0a1b8e4385a772e0651c6f4154c18ab8a2a62289c3213eb4fe937cec0942e0076cda429576e58ad277b18f4b5611e644d15b122c1cd96baf10f284  ruby-3.4.10.tar.xz
+
+# License files, Locally calculated
+sha256  a2021e52d5d6adf7e3f45aab9d2b860ce03cdf6153776853e11d5668193eecfd  LEGAL
+sha256  967586d538a28955ec2541910cf63c5ac345fcdea94bfb1f1705a1f6eb36bcbb  COPYING
+sha256  36a9a6e7347214bbba599a412617204e65bff065dcbe5c46f5cb454c80de9eb0  BSDL

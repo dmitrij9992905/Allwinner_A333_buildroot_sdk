@@ -1,0 +1,39 @@
+config AIC_WLAN_SUPPORT
+	bool "AIC wireless Support"
+	default n
+	help
+	  This is support for aic wireless chip.
+
+config AIC_FW_PATH
+	depends on AIC_WLAN_SUPPORT
+	string "Firmware & config file path"
+	default "/vendor/etc/firmware"
+	#default "/lib/firmware/aic8800_sdio"
+	help
+	  Path to the firmware & config file.
+
+config PLATFORM_ALLWINNER
+       bool "Allow Android config"
+       depends on AIC_WLAN_SUPPORT
+       default n
+       help
+               choice android config
+
+config PLATFORM_UBUNTU
+       bool "Allow Ubuntu config"
+       depends on AIC_WLAN_SUPPORT
+       default n
+       help
+               choice linux config
+
+config USE_P2P0
+       bool "Allow Ubuntu p2p0 config"
+       depends on AIC_WLAN_SUPPORT
+       default n
+       help
+               choice linux p2p0 config
+
+if AIC_WLAN_SUPPORT
+source "$(BSP_TOP)drivers/net/wireless/aic8800/aic8800_fdrv/Kconfig"
+source "$(BSP_TOP)drivers/net/wireless/aic8800/aic8800_btlpm/Kconfig"
+endif

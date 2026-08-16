@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: GPL-2.0
+
+menu "AW Real-time SPI master drivers"
+	depends on AW_XENOMAI_DRIVERS
+
+config AW_XENO_DRIVERS_SPI
+	tristate "Xenomai SPI NG Driver Support for Allwinner SoCs"
+	depends on OF && (ARCH_SUNXI || ARCH_RV32I || COMPILE_TEST)
+	default n
+	select SPI
+	help
+	  Enable SPI Xenomai Driver Support for Allwinner SoCs.
+
+config AW_XENO_DRIVERS_SPI_BIT
+	bool "Support driver bit-aligned feature"
+	depends on AW_XENO_DRIVERS_SPI
+	default y
+
+config AW_XENO_DRIVERS_SPI_DBI
+	bool "Support driver dbi feature"
+	depends on AW_XENO_DRIVERS_SPI
+	default y
+
+config AW_XENO_DRIVERS_SPI_CAMERA
+	bool "Support driver camera feature"
+	depends on AW_XENO_DRIVERS_SPI
+	default y
+
+config AW_XENO_DRIVERS_SPI_ATOMIC_XFER
+	bool "Support atomic xfer function"
+	depends on AW_XENO_DRIVERS_SPI
+	default n
+	help
+	  Enable SPI controller atomic xfer function, support transfer under
+	  no-irq/no-dma/no-schedule/no-suspend-resume env. (Such as kernel panic)
+endmenu
+

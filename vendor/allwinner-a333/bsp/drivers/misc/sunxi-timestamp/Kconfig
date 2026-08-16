@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config AW_TIMESTAMP
+	bool "enable sunxi timestamp"
+	default n

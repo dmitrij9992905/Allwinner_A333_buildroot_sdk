@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config AW_CHIPS
+	tristate "Chip LeveL APIs for Allwinner SoCs"
+	depends on AW_BSP
+	default n
+	help
+	  Provide chip level APIs for Allwinner SoCs.

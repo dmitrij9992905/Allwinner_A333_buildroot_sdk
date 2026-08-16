@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+menu "Resource Isolation Driver"
+
+config AW_AMP_SYS_RSC_MANAGER
+	bool "Enable Allwinner AMP System Resourece Manager(ASRM)"
+	select AW_RPROC_SUBDEV
+	select AW_RPROC_SUBDEV_RSC_HELPER
+	select AW_RPROC_USER_RESOURCE
+	default n
+
+config AW_CURRENT_AMP_SYS_RSC_USER_ID
+	int "Current AMP system resource user id in ASRM"
+	depends on AW_AMP_SYS_RSC_MANAGER
+	default 0
+	help
+	  Current AMP system resource user id, depend on specific platform.
+	  You can find all available user id in lowlevel/platform/platform_rsc_user_id.h.
+
+config AW_ASRM_PROVIDE_PERI_CLK_INFO
+	bool "ASRM provide peripheral clock info for CCU driver"
+	depends on AW_AMP_SYS_RSC_MANAGER
+	default y
+
+config AW_GPIO_ISOLATION_DRIVER
+	bool "Enable GPIO Isolation Driver"
+	depends on AW_AMP_SYS_RSC_MANAGER
+	default n
+
+config AW_DMA_ISOLATION_DRIVER
+	bool "Enable DMA Isolation Driver"
+	depends on AW_AMP_SYS_RSC_MANAGER
+	default n
+
+config AW_AMP_SYS_RSC_MANAGER_TEST
+	bool "ASRM test command"
+	depends on AW_AMP_SYS_RSC_MANAGER
+	default n
+
+endmenu

@@ -1,0 +1,2 @@
+source "$(BSP_TOP)drivers/net/wireless/seekwave/seekwaveplatform/Kconfig"
+source "$(BSP_TOP)drivers/net/wireless/seekwave/skw_drivers/Kconfig"

@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "Xenomai Device Drivers"
+
+config AW_XENOMAI_DRIVERS
+	bool "Enable allwinner drivers for RTDM devices"
+	depends on XENO_OPT_RTDM_COMPAT_DEVNODE
+	default n
+	help
+		Enable allwinner drivers for RTDM devices
+
+source "$(BSP_TOP)/drivers/xenomai/spi/Kconfig"
+
+endmenu
+

@@ -1,0 +1,53 @@
+; Draft A/B layout for a 16 GiB eMMC. Sizes are sectors (512 bytes).
+; Validate with the actual A333 flashing tool before production use.
+[mbr]
+size = 16384
+
+[partition_start]
+
+[partition]
+    name         = boot-resource
+    size         = 65536
+    downloadfile = "boot-resource.fex"
+    user_type    = 0x8000
+
+[partition]
+    name         = env
+    size         = 32768
+    downloadfile = "env.fex"
+    user_type    = 0x8000
+
+[partition]
+    name         = env-redund
+    size         = 32768
+    downloadfile = "env-redund.fex"
+    user_type    = 0x8000
+
+[partition]
+    name         = bootA
+    size         = 81920
+    downloadfile = "bootA.fex"
+    user_type    = 0x8000
+
+[partition]
+    name         = bootB
+    size         = 81920
+    downloadfile = "bootB.fex"
+    user_type    = 0x8000
+
+[partition]
+    name         = rootfsA
+    size         = 12582912
+    downloadfile = "rootfsA.fex"
+    user_type    = 0x8000
+
+[partition]
+    name         = rootfsB
+    size         = 12582912
+    downloadfile = "rootfsB.fex"
+    user_type    = 0x8000
+
+[partition]
+    name         = userdata
+    size         = 0
+    user_type    = 0x8000

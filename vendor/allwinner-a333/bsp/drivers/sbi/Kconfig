@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "SBI Drivers"
+	depends on AW_BSP
+
+config AW_SBI
+	tristate "Allwinner SBI Interfaces"
+	depends on RISCV_SBI
+	default n
+	help
+	  This driver support ecall interfaces depended on
+	  opensbi. If you don't know whether need it, please select y.
+
+endmenu

@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: (GPL-2.0+ or MIT)
+/*
+ * Allwinner Technology CO., Ltd. sun65iw1p1 platform
+ *
+ * modify base on juno.dts
+ */
+
+&target {
+	auto_fel = <0>;
+	dragonboard_test = <0>;	/*1:support card boot dragonboard; 0:not support card boot dragonboard*/
+};
+
+&pio {
+};
+
+&mmc0 {
+	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>;	/* PF6 */
+	bus-width = <4>;
+	status = "okay";
+};
+
+&mmc2 {
+	bus-width = <4>;
+	cap-mmc-highspeed;
+	mmc-ddr-1_8v;
+	max-frequency = <50000000>;
+	sdc_ex_dly_used = <2>;
+	status = "disabled";
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_ph_pins>;
+	status = "okay";
+};
+
+&platform {
+	debug_mode = <9>;
+};
+
+&sdc0_pins_a {
+		allwinner,pins = "PF0", "PF1", "PF2",
+				"PF3", "PF4", "PF5";
+		allwinner,function = "sdc0";
+		allwinner,muxsel = <2>;
+		allwinner,drive = <3>;
+		allwinner,pull = <1>;
+};
+
+&card0_boot_para {
+	/* Avoid dtc compiling warnings. @TODO: Developer should modify this to the actual value */
+	/* reg = <0x0 0x2 0x0 0x0>;  [> Avoid dtc compiling warnings. @TODO: Developer should modify this to the actual value <] */
+	device_type = "card0_boot_para";
+	card_ctrl = <0x0>;
+	card_high_speed = <0x1>;
+	card_line = <0x4>;
+	pinctrl-0 = <&sdc0_pins_a>;
+};
+

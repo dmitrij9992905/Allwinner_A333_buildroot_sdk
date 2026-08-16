@@ -1,0 +1,278 @@
+// SPDX-License-Identifier: (GPL-2.0+ or MIT)
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/gpio/sun4i-gpio.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/power/a523-power.h>
+#include <dt-bindings/phy/phy.h>
+#include <dt-bindings/thermal/thermal.h>
+#include <dt-bindings/clock/sunxi-ccu.h>
+#include <dt-bindings/clock/sun55iw7-rtc.h>
+#include <dt-bindings/clock/sun55iw7-ccu.h>
+#include <dt-bindings/clock/sun55iw7-r-ccu.h>
+#include <dt-bindings/reset/sun55iw7-ccu.h>
+#include <dt-bindings/reset/sun55iw7-r-ccu.h>
+
+/ {
+	model = "sun55iw7";
+	interrupt-parent = <&gic>;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		bl31 {
+			reg = <0x0 0x48000000 0x0 0x01000000>;
+		};
+	};
+
+	/* avoid panic when memory-node err(from uboot) */
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0x00000000 0x40000000 0x00000000 0x20000000>;
+	};
+
+	cpus {
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a55";
+			reg = <0x0 0x0>;
+			enable-method = "psci";
+			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
+			capacity-dmips-mhz = <1024>;
+//			clocks = <&cpupll_ccu CLK_PLL_CPU_L0>;
+//			operating-points-v2 = <&cluster_opp_table>;
+			#cooling-cells = <2>;
+			dynamic-power-coefficient = <105>;
+		};
+
+		cpu1: cpu@100 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a55";
+			reg = <0x0 0x100>;
+			enable-method = "psci";
+			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
+			capacity-dmips-mhz = <1024>;
+//			clocks = <&cpupll_ccu CLK_PLL_CPU_L0>;
+//			operating-points-v2 = <&cluster_opp_table>;
+			#cooling-cells = <2>;
+		};
+
+		cpu2: cpu@200 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a55";
+			reg = <0x0 0x200>;
+			enable-method = "psci";
+			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
+			capacity-dmips-mhz = <1024>;
+//			clocks = <&cpupll_ccu CLK_PLL_CPU_L0>;
+//			operating-points-v2 = <&cluster_opp_table>;
+			#cooling-cells = <2>;
+		};
+
+		cpu3: cpu@300 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a55";
+			reg = <0x0 0x300>;
+			enable-method = "psci";
+			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
+			capacity-dmips-mhz = <1024>;
+//			clocks = <&cpupll_ccu CLK_PLL_CPU_L0>;
+//			operating-points-v2 = <&cluster_opp_table>;
+			#cooling-cells = <2>;
+		};
+
+		cpu-map {
+			cluster0 {
+				core0 {
+					cpu = <&cpu0>;
+				};
+				core1 {
+					cpu = <&cpu1>;
+				};
+				core2 {
+					cpu = <&cpu2>;
+				};
+				core3 {
+					cpu = <&cpu3>;
+				};
+			};
+		};
+
+		idle-states {
+			entry-method = "arm,psci";
+
+			CPU_SLEEP_0: cpu-sleep-0 {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x0010000>;
+				entry-latency-us = <46>;
+				exit-latency-us = <59>;
+				min-residency-us = <3570>;
+				local-timer-stop;
+			};
+
+			CLUSTER_SLEEP_0: cluster-sleep-0 {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x1010000>;
+				entry-latency-us = <47>;
+				exit-latency-us = <74>;
+				min-residency-us = <5000>;
+				local-timer-stop;
+			};
+		};
+	};
+
+	psci {
+		compatible = "arm,psci-1.0";
+		method = "smc";
+	};
+
+	dcxo24M: dcxo24M_clk {
+		#clock-cells = <0>;
+		compatible = "fixed-clock";
+		clock-frequency = <24000000>;
+		clock-output-names = "dcxo24M";
+	};
+
+	rc_16m: rc16m_clk {
+		#clock-cells = <0>;
+		compatible = "fixed-clock";
+		clock-frequency = <16000000>;
+		clock-accuracy = <300000000>;
+		clock-output-names = "rc-16m";
+	};
+
+	ext_32k: ext32k_clk {
+		#clock-cells = <0>;
+		compatible = "fixed-clock";
+		clock-frequency = <32768>;
+		clock-output-names = "ext-32k";
+	};
+
+	gic: interrupt-controller@8000000 {
+		compatible = "arm,gic-v3";
+		#interrupt-cells = <3>;
+		#address-cells = <0>;
+		interrupt-controller;
+		reg = <0x0 0x08000000 0 0x10000>, /* GIC Dist */
+			<0x0 0x08040000 0 0xFF004>; /* GIC RE */
+		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&gic>;
+	};
+
+	timer_arch {
+		compatible = "arm,armv8-timer";
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+			   <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+			   <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+			   <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+		clock-frequency = <24000000>;
+		interrupt-parent = <&gic>;
+		arm,no-tick-in-suspend;
+	};
+
+	soc: soc@3000000 {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		uart0: uart@2b00000 {
+			compatible = "allwinner,uart-v100";
+			reg = <0x0 0x02B00000 0x0 0x0FFF>;
+			interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
+			sunxi,uart-fifosize = <64>;
+			uart0_port = <0>;
+			uart0_type = <2>;
+			status = "okay";
+		};
+
+		rtc_ccu: rtc_ccu@7200000 {
+			compatible = "allwinner,sun55iw7-rtc-ccu";
+			reg = <0x0 0x07200000 0x0 0x328>;
+			#clock-cells = <1>;
+			#reset-cells = <1>;
+		};
+
+		ccu: ccu@3008000 {
+			compatible = "allwinner,sun55iw7-ccu";
+			reg = <0x0 0x03008000 0x0 0x2000>;
+			clocks = <&dcxo24M>, <&rtc_ccu CLK_OSC32K>, <&rc_16m>;
+			clock-names = "hosc", "losc", "iosc";
+			#clock-cells = <1>;
+			#reset-cells = <1>;
+
+			/* for example */
+			sdm_info: sdm_info {
+				pll-peri0 {
+					sdm-enable = <0>;
+					sdm-factor = <4>;
+					freq-mode  = <TR_2>;
+					sdm-freq   = <FREQ_32>;
+				};
+			};
+		};
+
+		r_ccu: r_ccu@7030000 {
+			compatible = "allwinner,sun55iw7-r-ccu";
+			reg = <0x0 0x07030000 0x0 0x230>;
+			#clock-cells = <1>;
+			#reset-cells = <1>;
+		};
+
+		pio: pinctrl@3000000 {
+			compatible = "allwinner,sun55iw7-pinctrl";
+			reg = <0x0 0x03000000 0x0 0x500>;
+			interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ccu CLK_APB1>, <&dcxo24M>, <&rtc_ccu CLK_OSC32K>;
+			clock-names = "apb", "hosc", "losc";
+			gpio-controller;
+			#gpio-cells = <3>;
+			interrupt-controller;
+			#interrupt-cells = <3>;
+			#address-cells = <2>;
+		};
+
+		dump_reg:dump_reg@44000 {
+			compatible = "allwinner,sunxi-dump-reg";
+			reg = <0x0 0x00044000 0x0 0x0004>;
+		};
+
+		timer0: timer0@3208000 {
+			compatible = "allwinner,hstimer-v100";
+			device_type = "timer0";
+			reg = <0x0 0x03208000 0x0 0x400>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
+			clock-names = "parent", "bus", "timer0-mod", "timer1-mod";
+			clocks = <&dcxo24M>, <&ccu CLK_BUS_TIMER0_AHB>, <&ccu CLK_TIMER0_0_CLK>, <&ccu CLK_TIMER0_1_CLK>;
+			resets = <&ccu RST_BUS_TIMER0>;
+		};
+
+		rtc: rtc@7200000 {
+			compatible = "allwinner,rtc-v201";
+			device_type = "rtc";
+			wakeup-source;
+			reg = <0x0 0x07200000 0x0 0x200>;
+			interrupts = <GIC_SPI 232 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&r_ccu CLK_BUS_RTC>, <&rtc_ccu CLK_RTC_1K>, <&rtc_ccu CLK_RTC_SPI>;
+			clock-names = "bus-rtc", "rtc-1k", "rtc-spi";
+			resets = <&r_ccu RST_BUS_RTC>;
+			gpr_cur_pos = <6>;
+			gpr_bootcount_pos = <7>;
+		};
+	};
+};
+
+

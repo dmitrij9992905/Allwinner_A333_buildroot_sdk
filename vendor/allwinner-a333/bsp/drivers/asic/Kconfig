@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "Sunxi asic demo Drivers"
+	depends on AW_BSP
+
+config AW_ASIC_SPI_DEMO_SPI2APB
+	depends on AW_SPI_NG
+	tristate "Asic spi demo drivers for AW spi2apb"
+	default n
+
+config AW_ASIC_SPI_DEMO_INOVANCE
+	depends on AW_SPI_NG
+	tristate "Asic spi demo drivers for inovance"
+	default n
+
+config AW_ASIC_SDIO_DEMO
+	tristate "Asic sdio demo drivers"
+	default n
+
+config AW_ASIC_LOCALBUS_DEMO
+	tristate "Asic localbus demo drivers"
+	default n
+endmenu
