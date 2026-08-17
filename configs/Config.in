@@ -1,0 +1,6 @@
+menu "Allwinner A333 project"
+
+# Project-specific package options will be added here. Board files and
+# rootfs overlays intentionally live outside the Buildroot source tree.
+
+endmenu

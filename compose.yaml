@@ -6,11 +6,12 @@ services:
       args:
         UBUNTU_VERSION: "24.04"
     image: allwinner-a333-buildroot:2025.02.16
-    working_dir: /workspace
+    working_dir: /workspace/buildroot
     environment:
       BUILD_UID: "${BUILD_UID:-1000}"
       BUILD_GID: "${BUILD_GID:-1000}"
       BR2_DL_DIR: /workspace/dl
+      BR2_CCACHE_DIR: /workspace/ccache
     volumes:
       - .:/workspace
     init: true

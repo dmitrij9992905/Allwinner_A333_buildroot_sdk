@@ -1,0 +1,11 @@
+diff --git a/Makefile b/Makefile
+index 44e2f7d..8aa6305 100644
+--- a/Makefile
++++ b/Makefile
+@@ -573,6 +573,7 @@ LINUXINCLUDE    := \
+ 		-I$(objtree)/include \
+ 		-I$(srctree)/bsp/include \
+ 		$(USERINCLUDE)
++DTC_INCLUDE    += $(srctree)/bsp/include
+ 
+ KBUILD_AFLAGS   := -D__ASSEMBLY__ -fno-PIE

@@ -1,6 +1,6 @@
 # Сборка в Docker
 
-В корне проекта находится Buildroot `2025.02.16` (LTS). Docker-окружение
+В каталоге `buildroot/` находится Buildroot `2025.02.16` (LTS). Docker-окружение
 изолирует версии Ubuntu и host-инструментов от основной системы. Нужные
 компоненты vendor-сборки находятся в `vendor/allwinner-a333` и подключаются
 в контейнер вместе с проектом.
@@ -22,17 +22,19 @@
 После добавления defconfig платы типовые команды выглядят так:
 
 ```sh
-./docker-build.sh make O=output a333_defconfig
-./docker-build.sh make O=output menuconfig
-./docker-build.sh make O=output
+./docker-build.sh prepare-sources
+./docker-build.sh make O=../output BR2_EXTERNAL=../configs a333_helperboard_defconfig
+./docker-build.sh make O=../output BR2_EXTERNAL=../configs menuconfig
+./docker-build.sh make O=../output BR2_EXTERNAL=../configs
 ```
 
-`output/` и `dl/` находятся в рабочем каталоге и сохраняются между запусками.
+`output/`, `dl/` и `ccache/` находятся в рабочем каталоге и сохраняются между
+запусками. `dl/` содержит скачанные исходники, а `ccache/` — кэш компилятора.
 Они создаются с UID/GID текущего пользователя хоста. Передача дополнительных
 переменных Buildroot выполняется обычным способом, например:
 
 ```sh
-./docker-build.sh make O=output BR2_DL_DIR=/workspace/dl
+./docker-build.sh make O=../output BR2_EXTERNAL=../configs BR2_DL_DIR=/workspace/dl
 ```
 
 Файл `compose.yaml` можно использовать отдельно на системах, где установлен

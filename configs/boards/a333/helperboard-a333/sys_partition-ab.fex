@@ -48,6 +48,18 @@ size = 16384
     user_type    = 0x8000
 
 [partition]
+    name         = oemA
+    size         = 1048576
+    downloadfile = "oemA.fex"
+    user_type    = 0x8000
+
+[partition]
+    name         = oemB
+    size         = 1048576
+    downloadfile = "oemB.fex"
+    user_type    = 0x8000
+
+[partition]
     name         = userdata
     size         = 0
     user_type    = 0x8000

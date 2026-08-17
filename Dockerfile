@@ -47,6 +47,7 @@ RUN apt-get update \
         unzip \
         u-boot-tools \
         wget \
+        xxd \
         which \
         xz-utils \
         zstd \

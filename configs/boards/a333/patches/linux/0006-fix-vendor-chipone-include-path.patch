@@ -1,0 +1,8 @@
+diff --git a/bsp/drivers/input/ctp/chipone_tddi/Makefile b/bsp/drivers/input/ctp/chipone_tddi/Makefile
+index 3d4a3c6..7c4eb56 100644
+--- a/bsp/drivers/input/ctp/chipone_tddi/Makefile
++++ b/bsp/drivers/input/ctp/chipone_tddi/Makefile
+@@ -1,1 +1,3 @@
++ccflags-y += -I $(src)
++
+ obj-$(CONFIG_TOUCHSCREEN_CHIPONE) += chipone-tddi.o

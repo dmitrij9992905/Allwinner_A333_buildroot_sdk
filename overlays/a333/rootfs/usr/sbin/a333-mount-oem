@@ -1,0 +1,52 @@
+#!/bin/sh
+set -eu
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+
+oem_device()
+{
+    sed -n 's/.*[[:space:]]oemdev=\([^[:space:]]*\).*/\1/p' /proc/cmdline
+}
+
+mount_oem()
+{
+    device=""
+    i=0
+
+    while [ "$i" -lt 20 ]; do
+        device="$(oem_device || true)"
+        if [ -n "$device" ] && [ -b "$device" ]; then
+            mkdir -p /oem
+            if ! mountpoint -q /oem; then
+                mount -t ext4 -o noatime "$device" /oem
+            fi
+            return 0
+        fi
+        i=$((i + 1))
+        sleep 0.25
+    done
+
+    echo "a333-mount-oem: OEM block device is not available" >&2
+    return 1
+}
+
+unmount_oem()
+{
+    if mountpoint -q /oem; then
+        umount /oem
+    fi
+}
+
+case "${1:-start}" in
+    start)
+        mount_oem
+        ;;
+    stop)
+        unmount_oem
+        ;;
+    *)
+        echo "Usage: $0 {start|stop}" >&2
+        exit 2
+        ;;
+esac

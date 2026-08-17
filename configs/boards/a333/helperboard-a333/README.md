@@ -5,6 +5,14 @@ The vendor kernel, BSP, device-tree sources and U-Boot are kept under
 `vendor/allwinner-a333/`; this layer only contains project-owned configuration
 and integration files.
 
+## U-Boot toolchain
+
+The Allwinner vendor U-Boot is a 32-bit ARMv7 build, although it boots the
+AArch64 A333 Linux kernel. The project therefore uses the original Allwinner
+SDK's `gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi` toolchain from the
+ignored project-local `toolchains/` directory for U-Boot only. The Buildroot
+target toolchain remains AArch64/glibc.
+
 ## What is reused from the Luckfox SDK
 
 The Luckfox SDK is a useful reference for the build flow:
@@ -29,18 +37,24 @@ corresponding path: `SUNXI_SWITCH_SYSTEM` selects `boot_partition` and
 
 The initial Allwinner layout uses the following logical names:
 
-| Slot | boot | root filesystem |
-|---|---|---|
-| A | `bootA` | `rootfsA` |
-| B | `bootB` | `rootfsB` |
+| Slot | boot | root filesystem | OEM filesystem |
+|---|---|---|---|
+| A | `bootA` | `rootfsA` | `oemA` |
+| B | `bootB` | `rootfsB` | `oemB` |
 
 The capital `A`/`B` suffix is intentional. It avoids enabling the unrelated
 Android `boot_a`/`boot_b` detection path when the target is Buildroot/Linux.
 
 U-Boot state is stored redundantly in `env` and `env-redund`. Boot selection
 uses `systemAB_next`, `systemAB_now`, `systemAB_damage`, `systemA`, `systemB`,
-`rootfsA`, and `rootfsB`. `bootcount`/`bootlimit` provide the failed-boot
-fallback.
+`rootfsA`, `rootfsB`, `oemdevA`, and `oemdevB`. `bootcount`/`bootlimit` provide
+the failed-boot fallback.
+
+The base OS is built by Buildroot into `rootfs.ext4`. The post-image script
+duplicates it into `rootfsA.ext4`/`rootfsB.ext4` and creates a separate OEM
+filesystem from `oem/a333/rootfs`, producing `oemA.ext4`/`oemB.ext4`.
+The base OS uses `systemd` and `glibc`; OEM is mounted by the systemd unit from
+the root filesystem.
 
 The partition sizes in `sys_partition-ab.fex` are a starting point for a 16 GiB
 device, not a final production layout. They must be checked against the actual
@@ -48,18 +62,22 @@ eMMC capacity and the board vendor's flashing tool before use.
 
 ## RAUC status
 
-RAUC is intentionally not enabled by this directory yet. The standard RAUC
-U-Boot backend expects its own `BOOT_ORDER`/`BOOT_<slot>_LEFT` environment
-protocol, while the A333 vendor U-Boot uses `systemAB_*`. The remaining glue
-must atomically do the following after a successful inactive-slot write:
+RAUC is enabled as a Buildroot package and uses a custom bootloader backend in
+`/usr/lib/rauc/a333-bootloader.sh`. The backend maps RAUC's slot operations to
+the Allwinner U-Boot variables `systemAB_next`, `systemAB_damage` and
+`bootcount`. The target also contains `/etc/fw_env.config` for the redundant
+`env`/`env-redund` partitions (`/dev/mmcblk0p2` and `/dev/mmcblk0p3` in the
+current draft layout).
 
-1. set `systemAB_next` to the newly written slot;
-2. reset its boot counter and reboot;
-3. mark the slot healthy from userspace after the health check;
-4. keep the previous slot bootable as rollback.
+The post-image step creates a signed development bundle containing both the
+`rootfs` and `oem` slot classes. The development key is generated under the
+ignored project-local `keys/` directory. For production, set
+`A333_RAUC_KEY` and `A333_RAUC_CERT` to the controlled signing credentials.
 
-This is the A333 equivalent of Luckfox's U-Boot `boot_part` changes and is kept
-separate from the generic Buildroot image generation.
+The env partition names and the custom backend must be checked on the actual
+board before enabling unattended updates. The initial boot and rollback test
+should verify: install to the inactive slot, reboot, health check, mark good,
+and force a failed boot to confirm U-Boot returns to the previous slot.
 
 ## Display
 

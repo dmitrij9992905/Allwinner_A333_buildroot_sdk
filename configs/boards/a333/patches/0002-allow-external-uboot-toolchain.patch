@@ -1,0 +1,13 @@
+--- a/Makefile
++++ b/Makefile
+@@ -317,8 +317,10 @@
++ifeq ($(A333_USE_BUNDLED_TOOLCHAIN),y)
+ toolchain_check=$(shell if [ ! -e $(TOOLCHAIN_TOP_PATH)/.prepared ]; then echo yes; else echo no; fi;)
+ ifeq (x$(toolchain_check), xyes)
+ $(info Prepare toolchain ...);
+ $(shell rm -rf ${TOOLCHAIN_TOP_PATH} || exit 1)
+ $(shell mkdir -p $(TOOLCHAIN_TOP_PATH) || exit 1)
+ $(shell tar --strip-components=1 -xf $(TOOLCHAIN_TAR_PATH) -C $(TOOLCHAIN_TOP_PATH) || exit 1)
+ $(shell touch ${TOOLCHAIN_TOP_PATH}/.prepared || exit 1)
+ endif
++endif

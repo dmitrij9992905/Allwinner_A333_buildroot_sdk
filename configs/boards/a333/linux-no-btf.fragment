@@ -1,0 +1,7 @@
+# The vendor defconfig enables BTF, but the Buildroot kernel fixup requires
+# host-pahole for it. Disable BTF for the first bring-up; it can be enabled
+# later together with BR2_LINUX_KERNEL_NEEDS_HOST_PAHOLE=y.
+# CONFIG_DEBUG_INFO_BTF is not set
+# The vendor tree contains warnings rejected by the newer Buildroot toolchain.
+# Keep them as warnings, matching the original SDK build behaviour.
+# CONFIG_WERROR is not set

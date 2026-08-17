@@ -1,22 +1,21 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Buildroot A333 project <noreply@localhost>
 Date: Sun, 16 Aug 2026 00:00:00 +0300
-Subject: [PATCH] sunxi: make native A/B switcher safe for Linux root devices
+Subject: [PATCH] sunxi: make native A/B switcher safe for Linux and OEM devices
 
 The vendor switcher assumes all optional environment variables exist and uses
 the partition name only for root selection. Buildroot needs the selected block
-device as well. Keep the vendor partition names for U-Boot image lookup and
-copy rootdevA/rootdevB into mmc_root for the Linux command line.
+devices for the Linux root filesystem and the slot-specific OEM filesystem.
 
 ---
- board/sunxi/sunxi_switch_system.c | 22 +++++++++++++++++-----
- 1 file changed, 17 insertions(+), 5 deletions(-)
+ board/sunxi/sunxi_switch_system.c | 30 +++++++++++++++++++++++++-----
+ 1 file changed, 25 insertions(+), 5 deletions(-)
 
 diff --git a/board/sunxi/sunxi_switch_system.c b/board/sunxi/sunxi_switch_system.c
 index 1234567..89abcde 100644
 --- a/board/sunxi/sunxi_switch_system.c
 +++ b/board/sunxi/sunxi_switch_system.c
-@@ -27,45 +27,54 @@ static int __switch_systemAB(char *system)
+@@ -27,45 +27,62 @@ static int __switch_systemAB(char *system)
  {
  	char tmp_system[5] = {0};
  	char *systemA = NULL;
@@ -25,6 +24,8 @@ index 1234567..89abcde 100644
  	char *rootfsB = NULL;
 +	char *rootdevA = NULL;
 +	char *rootdevB = NULL;
++	char *oemdevA = NULL;
++	char *oemdevB = NULL;
  	char *systemAB_damage = env_get("systemAB_damage");
  	char *systemAB_now = env_get("systemAB_now");
 -	memcpy(tmp_system, system, sizeof(tmp_system));
@@ -41,10 +42,13 @@ index 1234567..89abcde 100644
  			systemA = env_get("systemA");
  			rootfsA = env_get("rootfsA");
 +			rootdevA = env_get("rootdevA");
++			oemdevA = env_get("oemdevA");
  			env_set("boot_partition", systemA);
  			env_set("root_partition", rootfsA);
 +			if (rootdevA)
 +				env_set("mmc_root", rootdevA);
++			if (oemdevA)
++				env_set("oem_device", oemdevA);
  			env_set("systemAB_now", "A");
  			env_save();
  			printf("boot system %s\n", tmp_system);
@@ -60,10 +64,13 @@ index 1234567..89abcde 100644
  			systemB = env_get("systemB");
  			rootfsB = env_get("rootfsB");
 +			rootdevB = env_get("rootdevB");
++			oemdevB = env_get("oemdevB");
  			env_set("boot_partition", systemB);
  			env_set("root_partition", rootfsB);
 +			if (rootdevB)
 +				env_set("mmc_root", rootdevB);
++			if (oemdevB)
++				env_set("oem_device", oemdevB);
  			env_set("systemAB_now", "B");
  			env_save();
  			printf("boot system %s\n", tmp_system);

@@ -1,5 +1,9 @@
-/output*
-/dl
+/output/
+/dl/
+/ccache/
+/toolchains/
+/keys/
+/.allwinner-a333-archive.*/
 /.auto.deps
 /.config.cmd
 /.config.old

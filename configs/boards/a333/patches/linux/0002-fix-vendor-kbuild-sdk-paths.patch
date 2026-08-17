@@ -1,0 +1,44 @@
+diff --git a/bsp/modules/nand/Makefile b/bsp/modules/nand/Makefile
+index 0a8f9c1..4d3a6f2 100644
+--- a/bsp/modules/nand/Makefile
++++ b/bsp/modules/nand/Makefile
+@@ -26,4 +26,4 @@
+ # Re-setup it
+-KERNEL_SRC_DIR := $(word 1, $(KERNEL_SRC_DIR) $(KERNEL_SRC))
+-KERNEL_OUT_DIR := $(word 1, $(KERNEL_OUT_DIR) $(KERNEL_SRC_DIR))
++KERNEL_SRC_DIR := $(word 1, $(KERNEL_SRC_DIR) $(KERNEL_SRC) $(srctree))
++KERNEL_OUT_DIR := $(word 1, $(KERNEL_OUT_DIR) $(KERNEL_SRC_DIR) $(objtree))
+ 
+diff --git a/bsp/modules/gpu/Makefile b/bsp/modules/gpu/Makefile
+index 7e0f0ab..0df2c1e 100644
+--- a/bsp/modules/gpu/Makefile
++++ b/bsp/modules/gpu/Makefile
+@@ -26,2 +26,2 @@
+-KERNEL_SRC_DIR := $(word 1, $(KERNEL_SRC_DIR) $(KERNEL_SRC))
+-KERNEL_OUT_DIR := $(word 1, $(KERNEL_OUT_DIR) $(KERNEL_SRC_DIR))
++KERNEL_SRC_DIR := $(word 1, $(KERNEL_SRC_DIR) $(KERNEL_SRC) $(srctree))
++KERNEL_OUT_DIR := $(word 1, $(KERNEL_OUT_DIR) $(KERNEL_SRC_DIR) $(objtree))
+diff --git a/bsp/drivers/ve/cedar-ve/Makefile b/bsp/drivers/ve/cedar-ve/Makefile
+index 3a16e02..4a6bf9c 100644
+--- a/bsp/drivers/ve/cedar-ve/Makefile
++++ b/bsp/drivers/ve/cedar-ve/Makefile
+@@ -3,7 +3,7 @@
+ # Makefile for the kernel multimedia device drivers.
+ #
+ 
+-# ccflags-y += -I $(srctree)/drivers/media/cedar-ve
++ccflags-y += -I $(src)
+ ccflags-$(CONFIG_AW_VIDEO_DYNAMIC_DEBUG) += -DDYNAMIC_DEBUG_MODULE
+ 
+ obj-$(CONFIG_AW_VIDEO_ENCODER_DECODER) += sunxi-ve.o
+diff --git a/bsp/drivers/sound/platform/Makefile b/bsp/drivers/sound/platform/Makefile
+index b531ee8..ed0edc4 100644
+--- a/bsp/drivers/sound/platform/Makefile
++++ b/bsp/drivers/sound/platform/Makefile
+@@ -5,6 +5,7 @@
+ # Copyright(c) 2022-2027 Allwinnertech Co., Ltd.
+ 
+ ccflags-y += -I $(srctree)/bsp/drivers/sound/pa/
++ccflags-y += -I $(src)
+ ccflags-y += -I $(srctree)/bsp/drivers/sound/adapter
+ ADPT_DIR := ../adapter
