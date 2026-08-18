@@ -39,7 +39,7 @@ BR2_TARGET_UBOOT_BOARD_DEFCONFIG="sun65iw1p1_a333"
 BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES="../configs/boards/a333/helperboard-a333/uboot-ab.config"
 BR2_TARGET_UBOOT_DEFAULT_ENV_FILE="../configs/boards/a333/helperboard-a333/env-ab.cfg"
 BR2_TARGET_UBOOT_PATCH="../configs/boards/a333/patches"
-BR2_TARGET_UBOOT_CUSTOM_MAKEOPTS="CROSS_COMPILE=/workspace/toolchains/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi- DTS_PATH=/workspace/output/build/uboot-custom/arch/arm/dts"
+BR2_TARGET_UBOOT_CUSTOM_MAKEOPTS="CROSS_COMPILE=/workspace/toolchains/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi- DTS_PATH=/workspace/output/build/uboot-custom/arch/arm/dts LICHEE_BOARD_CONFIG_DIR=/workspace/vendor/allwinner-a333/pack-sdk/device/config/chips/a333/configs/pro"
 BR2_TARGET_UBOOT_FORMAT_BIN=y
 
 BR2_PACKAGE_RAUC=y
