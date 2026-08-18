@@ -716,7 +716,7 @@
 	vmmc-supply = <&reg_cldo3>;
 	/*emmc io vol 1.8v*/
 	vqmmc-supply = <&reg_cldo1>;
-	status = "disabled";
+	status = "okay";
 };
 
 &sdc0 {

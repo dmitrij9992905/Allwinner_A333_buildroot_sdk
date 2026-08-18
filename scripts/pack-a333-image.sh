@@ -15,6 +15,7 @@ PACK_OUT_DIR="$PACK_WORK/pack_out"
 PACK_PLATFORM_OUT="$PACK_WORK/a333/pro/dragonboard"
 PACK_CONFIG="$PACK_ROOT/out/a333/pro/dragonboard/.buildconfig"
 HOOK="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/pack-pre-finish.sh"
+FACTORY_IMAGE_DEFAULT="$PROJECT_ROOT/../allwinner-a333/helpera333_ubuntu22.04_xfce_mipi8.0_800x1280_20251114.img"
 
 for input in boot.img u-boot.bin board.dtb rootfsA.ext4 rootfsB.ext4 oemA.ext4 oemB.ext4; do
 	if [ ! -f "$BINARIES_DIR/$input" ]; then
@@ -70,6 +71,14 @@ mkdir -p "$(dirname "$PACK_CONFIG")"
 } > "$PACK_CONFIG"
 
 export A333_BINARIES_DIR="$BINARIES_DIR"
+export A333_PROJECT_ROOT="$PROJECT_ROOT"
+export A333_PACK_WORK="$PACK_WORK"
+# If the vendor Ubuntu image is present next to this repository, use it as
+# the source of the known-good boot0/SCP pair. The variable can be overridden
+# for another factory image, or left empty to keep the SDK binaries.
+if [ -z "${A333_FACTORY_IMAGE:-}" ] && [ -f "$FACTORY_IMAGE_DEFAULT" ]; then
+	export A333_FACTORY_IMAGE="$FACTORY_IMAGE_DEFAULT"
+fi
 export A333_PACK_PRE_FINISH_HOOK="$HOOK"
 export A333_PACK_SKIP_FLASHMAP=1
 

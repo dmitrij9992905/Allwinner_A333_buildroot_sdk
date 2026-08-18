@@ -5,3 +5,11 @@
 # The vendor tree contains warnings rejected by the newer Buildroot toolchain.
 # Keep them as warnings, matching the original SDK build behaviour.
 # CONFIG_WERROR is not set
+
+# The root filesystem is on the internal eMMC and the image has no initramfs.
+# These drivers must be available before /sbin/init, otherwise rootwait waits
+# forever for /dev/mmcblk0p6 while the kernel appears to have hung.
+CONFIG_AW_MMC_HSQ=y
+CONFIG_AW_MMC=y
+CONFIG_MMC_CQHCI=y
+CONFIG_AW_UART_NG=y
