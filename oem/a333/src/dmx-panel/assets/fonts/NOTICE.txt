@@ -1,0 +1,13 @@
+Roboto Regular 2.138
+
+Copyright 2011 Google Inc. All Rights Reserved.
+Roboto is a trademark of Google.
+
+The unmodified font is embedded in dmx-panel and remains licensed under the
+Apache License, Version 2.0. The complete terms are in LICENSE.txt.
+
+Upstream release:
+https://github.com/googlefonts/roboto-2/releases/tag/v2.138
+
+Roboto-Regular.ttf SHA-256:
+797e35f7f5d6020a5c6ea13b42ecd668bcfb3bbc4baa0e74773527e5b6cb3174

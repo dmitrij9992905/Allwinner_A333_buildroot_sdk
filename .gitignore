@@ -2,7 +2,10 @@
 /dl/
 /ccache/
 /toolchains/
+/vendor/allwinner-a333/pack-sdk/out/
+/vendor/allwinner-a333/pack-sdk/.disclaimer_accpet
 /keys/
+/oem/a333/rootfs/
 /.allwinner-a333-archive.*/
 /.auto.deps
 /.config.cmd

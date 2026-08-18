@@ -1,2 +1,1 @@
-# Project packages are kept under oem/ and will be registered here as they are
-# introduced. Keep this file present so BR2_EXTERNAL works from the first build.
+include $(sort $(wildcard $(BR2_EXTERNAL_A333_PATH)/package/*/*.mk))

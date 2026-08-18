@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+# The SDK dragon binary is an old 32-bit C++ program.  Keep the SDK runtime
+# available to the other pack tools, but run dragon with the container's
+# maintained i386 C/C++ runtime first.
+PACK_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+exec env \
+	LD_LIBRARY_PATH=/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu \
+	"$PACK_ROOT/tools/pack/pctools/linux/eDragonEx/dragon" "$@"

@@ -38,3 +38,5 @@ if [ -f "$BINARIES_DIR/Image" ]; then
 fi
 
 "$PROJECT_ROOT/scripts/make-a333-rauc-bundle.sh" "$BINARIES_DIR"
+"$PROJECT_ROOT/scripts/make-a333-bootimg.sh" "$BINARIES_DIR"
+"$PROJECT_ROOT/scripts/pack-a333-image.sh" "$BINARIES_DIR"

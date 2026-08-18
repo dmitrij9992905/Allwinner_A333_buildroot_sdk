@@ -1,6 +1,5 @@
 menu "Allwinner A333 project"
 
-# Project-specific package options will be added here. Board files and
-# rootfs overlays intentionally live outside the Buildroot source tree.
+source "$BR2_EXTERNAL_A333_PATH/package/dmx-panel/Config.in"
 
 endmenu

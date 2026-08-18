@@ -1,0 +1,10 @@
+config BR2_PACKAGE_DMX_PANEL
+	bool "dmx-panel demo application"
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	help
+	  LVGL framebuffer/evdev demo application for the Allwinner A333
+	  1280x800 MIPI panel. The installed systemd service starts it in
+	  simulation mode and does not open the RS485 device.
+
+	  The application sources are kept in oem/a333/src/dmx-panel and
+	  include the LVGL version used by the original Luckfox application.

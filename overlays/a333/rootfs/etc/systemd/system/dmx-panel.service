@@ -1,0 +1,16 @@
+[Unit]
+Description=Allwinner A333 dmx-panel display demo
+After=local-fs.target a333-oem-mount.service systemd-udev-settle.service
+Requires=a333-oem-mount.service
+Wants=systemd-udev-settle.service
+
+[Service]
+Type=simple
+ExecStart=/oem/usr/bin/dmx-panel --simulate --allow-missing-input --framebuffer /dev/fb0 --input auto
+Restart=on-failure
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

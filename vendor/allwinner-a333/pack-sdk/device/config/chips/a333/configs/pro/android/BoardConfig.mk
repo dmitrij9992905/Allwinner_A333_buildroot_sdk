@@ -1,0 +1,1 @@
+-include device/softwinner/earth/a537-pro/system/bsp-config.mk

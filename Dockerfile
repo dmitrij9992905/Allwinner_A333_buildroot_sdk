@@ -9,10 +9,12 @@ ENV LANG=C.UTF-8 \
 
 # Host dependencies recommended by Buildroot plus the tools needed for
 # ARM64 kernel/device-tree/U-Boot image work.
-RUN apt-get update \
+RUN dpkg --add-architecture i386 \
+    && apt-get update \
     && apt-get install --no-install-recommends --yes \
         bc \
         bison \
+        busybox \
         build-essential \
         bzip2 \
         ca-certificates \
@@ -30,9 +32,13 @@ RUN apt-get update \
         gosu \
         gzip \
         libelf-dev \
+        libc6-i386 \
+        libgcc-s1:i386 \
+        libstdc++6:i386 \
         libncurses-dev \
         libssl-dev \
         lz4 \
+        lsof \
         make \
         mercurial \
         mtools \

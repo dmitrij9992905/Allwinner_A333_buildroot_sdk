@@ -1,0 +1,1 @@
+-include device/softwinner/earth/a333-qa/system/bsp-config.mk
