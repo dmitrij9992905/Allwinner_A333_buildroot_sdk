@@ -95,8 +95,31 @@ copy_payload()
 	cp -f "$A333_BINARIES_DIR/$src" "$dst"
 }
 
+patch_boot0_chip_tag()
+{
+	: "${A333_PROJECT_ROOT:?A333_PROJECT_ROOT is required for BOOT0 patching}"
+
+	boot0="boot0_sdcard.fex"
+	patcher="$A333_PROJECT_ROOT/scripts/patch-a333-boot0-chip-tag.py"
+
+	if [ ! -f "$boot0" ]; then
+		echo "A333 pack: boot0 not found: $boot0" >&2
+		exit 1
+	fi
+
+	if [ ! -f "$patcher" ]; then
+		echo "A333 pack: BOOT0 chip-tag patcher not found: $patcher" >&2
+		exit 1
+	fi
+
+	echo "A333 pack: patching BOOT0 chip tag"
+	python3 "$patcher" "$boot0"
+}
+
 # build/pack has already changed the current directory to pack_out here.
 install_factory_boot_files
+patch_boot0_chip_tag
+
 copy_payload boot.img bootA.fex
 copy_payload boot.img bootB.fex
 copy_payload rootfsA.ext4 rootfsA.fex

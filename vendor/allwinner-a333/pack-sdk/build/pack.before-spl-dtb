@@ -288,7 +288,6 @@ ${LICHEE_PLAT_OUT}/u-boot-spinor-${PACK_CHIP}.bin:${LICHEE_PACK_OUT_DIR}/u-boot-
 ${LICHEE_PLAT_OUT}/u-boot-spinor-secure-${PACK_CHIP}.bin:${LICHEE_PACK_OUT_DIR}/u-boot-spinor-secure.fex
 ${LICHEE_PLAT_OUT}/vmlinux.tar.bz2:${LICHEE_PACK_OUT_DIR}/vmlinux.fex
 ${LICHEE_PLAT_OUT}/opensbi.dtb:${LICHEE_PACK_OUT_DIR}/opensbi.dtb
-${LICHEE_PLAT_OUT}/spl.dtb:${LICHEE_PACK_OUT_DIR}/spl.dtb
 )
 
 arm_boot_file_secure=(
@@ -492,86 +491,6 @@ function partition_size_handle()
 		fi
 	done < $filename
 	return 0
-}
-
-function build_spl_dtb()
-{
-	local script_path=${LICHEE_BUILD_DIR}/mkdts.sh
-	local dtc_path=${LICHEE_BUILD_DIR}/bin/dtc
-	local dts_path=${LICHEE_BOARD_CONFIG_DIR}/spl.dts
-	local include_dtsi_path=${LICHEE_CHIP_CONFIG_DIR}/configs/default/
-	local out_path=${LICHEE_PACK_OUT_DIR}
-
-	if [ -f ${out_path}/spl.dtb ]; then
-		rm ${out_path}/spl.dtb
-	fi
-
-	if [ ! -f ${dts_path} ]; then
-		LOGD "No dts for spl"
-		return 0
-	fi
-
-	if [ ! -f ${dtc_path} ]; then
-		LOGF "spl compile error: ${dtc_path} not exist!"
-		return 1
-	fi
-
-	LOGD "--- Make SPL DTB"
-	${script_path} -i ${dts_path} -I ${include_dtsi_path} -o ${out_path} -t ${dtc_path}
-}
-
-function spl_merge_dtb()
-{
-	local spl_dtb=${LICHEE_PACK_OUT_DIR}/spl.dtb
-	local image_array=("boot0_sdcard.fex" "boot0_nand.fex" "boot0_spinor.fex" "sboot.bin" "sboot_nand.bin" "sboot_sdcard.bin" "sboot_ufs.bin")
-	local dtb_section_offset=32
-
-	if [ ! -f "$spl_dtb" ]; then
-		LOGD spl.dtb not exit!
-		return 0
-	fi
-
-	spl_size=$(stat -c%s "$spl_dtb")
-
-	for image in "${image_array[@]}"; do
-		if [ ! -f "${LICHEE_PACK_OUT_DIR}/$image" ]; then
-			continue
-		fi
-
-		if [ "${image:0:5}" = "boot0" ]; then
-			dtb_record_offset=0x33c
-		else
-			dtb_record_offset=0x3fd
-		fi
-
-		dtb_offset_first=0x$(dd if="${LICHEE_PACK_OUT_DIR}/$image" bs=1 skip=$((16#$(printf "%x" $dtb_record_offset))) count=1 status=none 2>/dev/null | od -An -tx4 -w4 | tr -d ' \n')
-		dtb_offset_second=0x$(dd if="${LICHEE_PACK_OUT_DIR}/$image" bs=1 skip=$(($((16#$(printf "%x" $dtb_record_offset))) + 1)) count=1 status=none 2>/dev/null | od -An -tx4 -w4 | tr -d ' \n')
-		dtb_offset_third=0x$(dd if="${LICHEE_PACK_OUT_DIR}/$image" bs=1 skip=$(($((16#$(printf "%x" $dtb_record_offset))) + 2)) count=1 status=none 2>/dev/null | od -An -tx4 -w4 | tr -d ' \n')
-
-		magic_offset=$(($(printf "%d" "$dtb_offset_first") + $(($(printf "%d" "$dtb_offset_second") * 256)) + $(($(printf "%d" "$dtb_offset_third") * 65536))))
-
-		if [ $magic_offset -eq 0 ]; then
-		    echo not reserve dtb section
-		    continue
-		fi
-
-		magic_val=0x$(dd if="${LICHEE_PACK_OUT_DIR}/$image" bs=1 skip=$magic_offset count=4 status=none | od -An -tx4 -w4 | tr -d ' \n')
-		max_size=$(($((16#$(dd if="${LICHEE_PACK_OUT_DIR}/$image" bs=1 skip=$(($magic_offset + 4)) count=4 status=none | od -An -tx4 -w4 | tr -d ' \n'))) - $dtb_section_offset))
-
-		if [ $magic_val !=  0x6274642e ]; then
-			echo bad dtb section maigc
-			continue
-		fi
-
-		if [ $spl_size -le $max_size ]; then
-		    dd if=$spl_dtb of=${LICHEE_PACK_OUT_DIR}/$image bs=1 seek=$(($magic_offset + $dtb_section_offset)) conv=notrunc 2>/dev/null
-		    cp ${LICHEE_PACK_OUT_DIR}/$image ${LICHEE_PACK_OUT_DIR}/aaaaa$image
-		    update_checksum ${LICHEE_PACK_OUT_DIR}/$image
-		else
-			echo "spl dtb size is larger than dtb section size"
-			exit 1
-		fi
-	done
 }
 
 function opensbi_merge_dtb()
@@ -831,9 +750,6 @@ function do_prepare()
 			eval cp -f $(echo $file | sed -e 's/:/ /g') 2>/dev/null
 		done
 	done
-
-	build_spl_dtb
-	spl_merge_dtb
 
 	# If platform config use
 	if [ -f ${LICHEE_CHIP_CONFIG_DIR}/tools/plat_config.sh ] ; then

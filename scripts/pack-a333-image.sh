@@ -17,6 +17,9 @@ PACK_CONFIG="$PACK_ROOT/out/a333/pro/dragonboard/.buildconfig"
 HOOK="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/pack-pre-finish.sh"
 FACTORY_IMAGE_DEFAULT="$PROJECT_ROOT/../allwinner-a333/helpera333_ubuntu22.04_xfce_mipi8.0_800x1280_20251114.img"
 
+CUSTOM_ENV="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/env-ab.cfg"
+PACK_ENV="$PACK_ROOT/device/config/chips/a333/configs/pro/dragonboard/env.cfg"
+
 for input in boot.img u-boot.bin board.dtb rootfsA.ext4 rootfsB.ext4 oemA.ext4 oemB.ext4; do
 	if [ ! -f "$BINARIES_DIR/$input" ]; then
 		echo "pack-a333-image: missing $BINARIES_DIR/$input" >&2
@@ -31,6 +34,14 @@ cp -f "$BINARIES_DIR/rootfs.ext4" "$PACK_PLAT_OUT/rootfs.ext4"
 cp -f "$BINARIES_DIR/board.dtb" "$PACK_PLAT_OUT/sunxi.dtb"
 cp -f "$BINARIES_DIR/u-boot.bin" "$PACK_PLAT_OUT/u-boot-sun65iw1p1.bin"
 cp -f /usr/bin/dtc "$PACK_PLAT_OUT/dtc"
+
+if [ ! -f "$CUSTOM_ENV" ]; then
+	echo "pack-a333-image: missing custom environment: $CUSTOM_ENV" >&2
+	exit 1
+fi
+
+echo "pack-a333-image: installing A/B U-Boot environment"
+cp -f "$CUSTOM_ENV" "$PACK_ENV"
 
 # build/pack locates .buildconfig relative to its own SDK root. Generate the
 # small, project-local configuration in the ignored pack output directory.

@@ -1,0 +1,13 @@
+/* SPDX-License-Identifier: (GPL-2.0+ or MIT) */
+
+#include "spl.dtsi"
+
+&phy_key {
+	type = <2>;
+	
+	gpadc: gpadc {
+		channel = <2>;
+		vol_max = <1200>;
+		vol_min = <300>;
+	};
+};
