@@ -31,3 +31,13 @@ CONFIG_AW_DMA=y
 CONFIG_AW_TWI=y
 CONFIG_AW_MFD_AXP2101_I2C=y
 CONFIG_AW_REGULATOR_AXP2101=y
+
+# A333 display early power domain
+CONFIG_AW_PCK600_DOMAINS=y
+
+# Legacy /dev/fb0 interface required by dmx-panel
+CONFIG_FB=y
+CONFIG_DRM_FBDEV_EMULATION=y
+
+# dmx-panel owns the framebuffer; no kernel text console on the LCD
+# CONFIG_FRAMEBUFFER_CONSOLE is not set
