@@ -794,7 +794,7 @@
 	twi-supply = <&reg_cldo3>;
 	status = "okay";
 	chipone {
-		status = "okay";
+		status = "disabled";
 		compatible = "chipone-tddi";
 		reg = <0x48>;
 		//pinctrl-names = "default";
@@ -1475,8 +1475,8 @@
         ctp_name = "gt9xxnew_ts";
         ctp_twi_id = <0x0>;
         ctp_twi_addr = <0x5d>;
-        ctp_screen_max_x = <1024>;
-        ctp_screen_max_y = <600>;
+        ctp_screen_max_x = <800>;
+        ctp_screen_max_y = <1280>;
         ctp_revert_x_flag = <0>;
         ctp_revert_y_flag = <0>;
         ctp_exchange_x_y_flag = <0x0>;
