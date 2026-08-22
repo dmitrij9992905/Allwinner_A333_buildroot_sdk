@@ -81,7 +81,14 @@ and force a failed boot to confirm U-Boot returns to the previous slot.
 
 ## Display
 
-The vendor SDK has MIPI examples for 480x800 and 1200x1920, but no verified
-1280x800 panel description. The final DTS must be selected only after the
-panel controller, lane count, pixel format, timings and reset/backlight GPIOs
-are confirmed for the HelperBoard.
+The HelperBoard panel has a native 800x1280 MIPI raster. A single Buildroot
+choice under `Allwinner A333 project -> Display orientation` controls the
+boot logo, the dmx-panel framebuffer presentation and touchscreen coordinate
+mapping. The default is `Landscape, 90 degrees clockwise`, which exposes a
+logical 1280x800 dmx-panel canvas without stretching it onto the portrait
+framebuffer.
+
+The selected values are also installed as `/etc/a333/display.conf`. Changing
+the orientation requires rebuilding the complete image because the vendor
+U-Boot does not rotate its boot logo at runtime; the packing step pre-rotates
+the BMP using the same setting.

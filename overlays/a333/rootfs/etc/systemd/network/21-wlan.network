@@ -1,0 +1,6 @@
+[Match]
+Name=wl*
+
+[Network]
+DHCP=yes
+IPv6AcceptRA=yes

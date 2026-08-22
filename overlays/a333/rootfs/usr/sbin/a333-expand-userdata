@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+disk=${A333_USERDATA_DISK:-/dev/mmcblk0}
+part=${A333_USERDATA_PARTITION:-/dev/mmcblk0p10}
+part_name=${part##*/}
+[ -b "$disk" ] && [ -b "$part" ] || { echo "a333-expand-userdata: device unavailable" >&2; exit 1; }
+start=$(cat "/sys/class/block/$part_name/start")
+current=$(cat "/sys/class/block/$part_name/size")
+total=$(blockdev --getsz "$disk" 2>/dev/null || cat "/sys/class/block/${disk##*/}/size")
+last=$((total - 34))
+available=$((last - start + 1))
+[ "$current" -ge "$available" ] && exit 0
+command -v sgdisk >/dev/null 2>&1 || { echo "a333-expand-userdata: sgdisk missing" >&2; exit 1; }
+echo "a333-expand-userdata: growing $part from $current to $available sectors"
+delete_tail=""
+if sgdisk -i 11 "$disk" >/dev/null 2>&1; then
+    delete_tail="--delete=11"
+fi
+sgdisk -a 1 $delete_tail --delete=10 --new=10:"$start":"$last" --typecode=10:8300 --change-name=10:userdata "$disk"
+blockdev --rereadpt "$disk" >/dev/null 2>&1 || true
+exit 10

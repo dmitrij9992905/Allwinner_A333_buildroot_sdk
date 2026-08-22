@@ -262,6 +262,10 @@ config SENSOR_OV8858_R2A_4LANE
 	tristate "use ov8858_r2a_4lane driver"
 	default n
 
+config SENSOR_GC2093_MIPI
+	tristate "use gc2093_mipi driver"
+	default n
+
 config SENSOR_OV8865
 	tristate "use ov8865 driver"
 	default n

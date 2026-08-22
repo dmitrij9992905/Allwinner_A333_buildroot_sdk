@@ -1,0 +1,118 @@
+#!/bin/sh
+set -eu
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+
+userdata_device()
+{
+    device="$(sed -n 's/.*[[:space:]]userdata=\([^[:space:]]*\).*/\1/p' /proc/cmdline)"
+    if [ -n "$device" ] && [ -b "$device" ]; then
+        printf '%s\n' "$device"
+        return 0
+    fi
+    for link in /dev/disk/by-partlabel/userdata /dev/disk/by-name/userdata /dev/mmcblk0p10; do
+        if [ -e "$link" ]; then
+            readlink -f "$link"
+            return 0
+        fi
+    done
+    return 1
+}
+
+wait_for_userdata()
+{
+    i=0
+    while [ "$i" -lt 40 ]; do
+        if device="$(userdata_device 2>/dev/null)" && [ -b "$device" ]; then
+            printf '%s\n' "$device"
+            return 0
+        fi
+        i=$((i + 1))
+        sleep 0.25
+    done
+    return 1
+}
+
+populate_skeleton()
+{
+    mkdir -p /userdata/var/lib /userdata/var/cache /userdata/var/log \
+        /userdata/home /userdata/root
+    if [ -d /usr/share/a333/userdata-skel ]; then
+        cp -a /usr/share/a333/userdata-skel/. /userdata/
+    fi
+    touch /userdata/.a333-userdata-initialized
+}
+
+bind_persistent()
+{
+    source="$1"
+    target="$2"
+    mkdir -p "$source" "$target"
+    if ! mountpoint -q "$target"; then
+        mount --bind "$source" "$target"
+    fi
+}
+
+mount_userdata()
+{
+    if mountpoint -q /userdata; then
+        return 0
+    fi
+    if command -v a333-expand-userdata >/dev/null 2>&1; then
+        if a333-expand-userdata; then
+            :
+        else
+            rc=$?
+            if [ "$rc" -eq 10 ]; then
+                echo "a333-mount-userdata: partition expanded; rebooting once"
+                systemctl reboot
+                exit 0
+            fi
+            return "$rc"
+        fi
+    fi
+    device="$(wait_for_userdata || true)"
+    if [ -z "$device" ]; then
+        echo "a333-mount-userdata: userdata partition is not available" >&2
+        return 1
+    fi
+    if ! resize2fs -P "$device" >/dev/null 2>&1; then
+        echo "a333-mount-userdata: initialising ext4 on $device"
+        mkfs.ext4 -F -L userdata "$device"
+    fi
+    mkdir -p /userdata
+    mount -t ext4 -o noatime,nodev,nosuid "$device" /userdata
+    if command -v resize2fs >/dev/null 2>&1; then
+        resize2fs "$device"
+    else
+        echo "a333-mount-userdata: resize2fs is missing" >&2
+        return 1
+    fi
+    if [ ! -f /userdata/.a333-userdata-initialized ]; then
+        populate_skeleton
+    fi
+    bind_persistent /userdata/var/lib /var/lib
+    bind_persistent /userdata/var/cache /var/cache
+    bind_persistent /userdata/var/log /var/log
+    bind_persistent /userdata/home /home
+    bind_persistent /userdata/root /root
+}
+
+unmount_userdata()
+{
+    for target in /root /home /var/log /var/cache /var/lib; do
+        if mountpoint -q "$target"; then
+            umount "$target"
+        fi
+    done
+    if mountpoint -q /userdata; then
+        umount /userdata
+    fi
+}
+
+case "${1:-start}" in
+    start) mount_userdata ;;
+    stop) unmount_userdata ;;
+    *) echo "Usage: $0 {start|stop}" >&2; exit 2 ;;
+esac

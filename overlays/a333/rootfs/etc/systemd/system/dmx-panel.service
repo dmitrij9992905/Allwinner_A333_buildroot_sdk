@@ -6,7 +6,7 @@ Wants=systemd-udev-settle.service
 
 [Service]
 Type=simple
-ExecStart=/oem/usr/bin/dmx-panel --simulate --allow-missing-input --framebuffer /dev/fb0 --input auto
+ExecStart=/oem/usr/bin/dmx-panel --allow-missing-input --framebuffer /dev/fb0 --input auto --serial /dev/ttyS2
 Restart=on-failure
 RestartSec=2
 StandardOutput=journal

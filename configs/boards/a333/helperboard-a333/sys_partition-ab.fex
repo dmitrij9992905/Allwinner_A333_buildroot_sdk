@@ -61,5 +61,8 @@ size = 16384
 
 [partition]
     name         = userdata
-    size         = 0
+    ; Start with a 1 GiB userdata partition. First boot removes the unused
+    ; UDISK/service tail and grows this GPT partition to the last usable sector.
+    size         = 2097152
+    downloadfile = "userdata.fex"
     user_type    = 0x8000

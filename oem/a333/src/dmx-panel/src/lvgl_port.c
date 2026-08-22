@@ -128,7 +128,9 @@ static void display_flush(lv_display_t *display,
         }
 
         if (lv_display_flush_is_last(display)) {
-            if (panel_fbdev_present(port->framebuffer, &port->canvas) < 0)
+            if (panel_fbdev_present(port->framebuffer,
+                                    &port->canvas,
+                                    DMX_PANEL_DISPLAY_ROTATION) < 0)
                 port->info.last_display_error = errno != 0 ? errno : EIO;
             else {
                 port->info.last_display_error = 0;
@@ -229,6 +231,7 @@ static int initialize_devices(lvgl_port_t *port,
     input_config.device_path = config->input_path;
     input_config.canvas_width = LVGL_PORT_HORIZONTAL_RESOLUTION;
     input_config.canvas_height = LVGL_PORT_VERTICAL_RESOLUTION;
+    input_config.display_rotation = DMX_PANEL_DISPLAY_ROTATION;
     input_config.swap_xy = config->input_swap_xy;
     input_config.invert_x = config->input_invert_x;
     input_config.invert_y = config->input_invert_y;
@@ -347,6 +350,7 @@ static void fill_static_info(lvgl_port_t *port)
     port->info.framebuffer_height = panel_fbdev_height(port->framebuffer);
     port->info.framebuffer_bits_per_pixel =
         panel_fbdev_bits_per_pixel(port->framebuffer);
+    port->info.display_rotation = DMX_PANEL_DISPLAY_ROTATION;
     port->info.draw_buffer_lines = port->draw_buffer_lines;
     port->info.input_available = port->panel_input != NULL;
     port->info.owns_lvgl = port->owns_lvgl;

@@ -1,0 +1,2 @@
+Mutable application state belongs below /userdata.
+The a333-mount-userdata service binds var/lib, var/cache, var/log, home and root.

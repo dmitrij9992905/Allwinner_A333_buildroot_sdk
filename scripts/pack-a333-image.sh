@@ -15,7 +15,11 @@ PACK_OUT_DIR="$PACK_WORK/pack_out"
 PACK_PLATFORM_OUT="$PACK_WORK/a333/pro/dragonboard"
 PACK_CONFIG="$PACK_ROOT/out/a333/pro/dragonboard/.buildconfig"
 HOOK="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/pack-pre-finish.sh"
+PARTITION_CONFIG="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/sys_partition-ab.fex"
+PACK_PARTITION_CONFIG="$PACK_ROOT/device/config/chips/a333/configs/pro/dragonboard/sys_partition.fex"
 FACTORY_IMAGE_DEFAULT="$PROJECT_ROOT/../allwinner-a333/helpera333_ubuntu22.04_xfce_mipi8.0_800x1280_20251114.img"
+CONFIG_FILE="${BR2_CONFIG:-$PROJECT_ROOT/output/.config}"
+DISPLAY_ROTATION="${A333_DISPLAY_ROTATION:-}"
 
 CUSTOM_ENV="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/env-ab.cfg"
 PACK_ENV="$PACK_ROOT/device/config/chips/a333/configs/pro/dragonboard/env.cfg"
@@ -42,6 +46,8 @@ fi
 
 echo "pack-a333-image: installing A/B U-Boot environment"
 cp -f "$CUSTOM_ENV" "$PACK_ENV"
+echo "pack-a333-image: installing project partition layout"
+cp -f "$PARTITION_CONFIG" "$PACK_PARTITION_CONFIG"
 
 # build/pack locates .buildconfig relative to its own SDK root. Generate the
 # small, project-local configuration in the ignored pack output directory.
@@ -80,6 +86,33 @@ mkdir -p "$(dirname "$PACK_CONFIG")"
 	printf '%s\n' "export LICHEE_ONE_ENV_SIZE="
 	printf '%s\n' "export BUILD_SATA=false"
 } > "$PACK_CONFIG"
+
+BOOTLOGO_SRC="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/bootlogo.bmp"
+BOOTLOGO_ROTATOR="$PROJECT_ROOT/scripts/rotate-a333-bootlogo.py"
+PACK_BOARD_DIR="$PACK_ROOT/device/config/chips/a333/configs/pro/dragonboard"
+if [ -z "$DISPLAY_ROTATION" ] && [ -f "$CONFIG_FILE" ]; then
+	DISPLAY_ROTATION="$(sed -n 's/^BR2_A333_DISPLAY_ROTATION=//p' "$CONFIG_FILE")"
+fi
+DISPLAY_ROTATION="${DISPLAY_ROTATION:-90}"
+case "$DISPLAY_ROTATION" in
+	0|90|180|270) ;;
+	*)
+		echo "pack-a333-image: invalid display rotation: $DISPLAY_ROTATION" >&2
+		exit 1
+		;;
+esac
+if [ ! -f "$BOOTLOGO_SRC" ]; then
+	echo "pack-a333-image: missing boot logo: $BOOTLOGO_SRC" >&2
+	exit 1
+fi
+if [ ! -f "$BOOTLOGO_ROTATOR" ]; then
+	echo "pack-a333-image: missing boot logo rotator: $BOOTLOGO_ROTATOR" >&2
+	exit 1
+fi
+mkdir -p "$PACK_BOARD_DIR"
+python3 "$BOOTLOGO_ROTATOR" --rotation "$DISPLAY_ROTATION" \
+	"$BOOTLOGO_SRC" "$PACK_BOARD_DIR/bootlogo.bmp"
+echo "pack-a333-image: boot logo rotation is $DISPLAY_ROTATION degrees"
 
 export A333_BINARIES_DIR="$BINARIES_DIR"
 export A333_PROJECT_ROOT="$PROJECT_ROOT"

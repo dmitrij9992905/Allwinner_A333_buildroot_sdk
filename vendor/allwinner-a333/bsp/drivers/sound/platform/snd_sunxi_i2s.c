@@ -1273,6 +1273,7 @@ static int sunxi_i2s_dai_hw_params(struct snd_pcm_substream *substream,
 
 	/* set channels map */
 	ret = quirks->set_channels_map(i2s, params_channels(params));
+	printk(KERN_ERR "SUNXI-I2S DEBUG: hw_params received %d channels\n", params_channels(params));
 
 	/* set channels */
 	ret = quirks->set_channel_enable(i2s, substream->stream, params_channels(params));

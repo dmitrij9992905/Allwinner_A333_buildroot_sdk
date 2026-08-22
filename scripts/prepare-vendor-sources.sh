@@ -4,6 +4,7 @@ set -Eeuo pipefail
 project_root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 dl_dir="${DL_DIR:-$project_root/dl}"
 vendor_root="$project_root/vendor/allwinner-a333"
+echo "using project vendor copy: $vendor_root"
 
 mkdir -p "$dl_dir"
 

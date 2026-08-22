@@ -1,0 +1,32 @@
+#!/bin/sh
+set -eu
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+
+echo "A333 touch diagnostic: expected external controller at I2C address 0x5d"
+if ! command -v i2cdetect >/dev/null 2>&1; then
+    echo "i2cdetect is not installed"
+    exit 0
+fi
+
+found=0
+for bus in /dev/i2c-8; do
+    [ -e "$bus" ] || continue
+    number="${bus##*-}"
+    echo "-- $bus --"
+    if i2cdetect -y "$number" 0x5d 0x5d 2>/dev/null | tee /run/a333-touch-i2c-$number.log; then
+        if grep -Eq '(^|[[:space:]])5d([[:space:]]|$)' /run/a333-touch-i2c-$number.log; then
+            echo "touch controller 0x5d responded on I2C-$number"
+            found=1
+        fi
+        if grep -Eq '(^|[[:space:]])48([[:space:]]|$)' /run/a333-touch-i2c-$number.log; then
+            echo "chipone controller 0x48 responded on I2C-$number"
+            found=1
+        fi
+    fi
+done
+
+if [ "$found" -eq 0 ]; then
+    echo "No expected touch controller responded; inspect wiring, reset and IRQ GPIOs."
+fi

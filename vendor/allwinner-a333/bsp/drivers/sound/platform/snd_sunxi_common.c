@@ -345,9 +345,9 @@ static void pacfg_level_trig_enable(struct work_struct *work)
 
 	SND_LOG_DEBUG("\n");
 
+	gpio_set_value(level_trig->pin, level_trig->level);
 	if (level_trig->msleep_0)
 		msleep(level_trig->msleep_0);
-	gpio_set_value(level_trig->pin, level_trig->level);
 }
 
 static void pacfg_level_trig_disable(struct snd_sunxi_pacfg *pa_cfg)
@@ -810,7 +810,8 @@ int snd_sunxi_pa_pin_enable(struct snd_sunxi_pacfg *pa_cfg, u32 pa_pin_max)
 
 		switch (pa_cfg[i].mode) {
 		case SND_SUNXI_PA_CFG_LEVEL:
-			schedule_work(&pa_cfg[i].pa_en_work);
+			pacfg_level_trig_enable(&pa_cfg[i].pa_en_work);
+			//schedule_work(&pa_cfg[i].pa_en_work);
 			break;
 		case SND_SUNXI_PA_CFG_PULSE:
 			schedule_work(&pa_cfg[i].pa_en_work);

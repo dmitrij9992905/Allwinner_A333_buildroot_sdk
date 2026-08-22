@@ -1,5 +1,34 @@
 menu "Allwinner A333 project"
 
+choice
+	prompt "Display orientation"
+	default BR2_A333_DISPLAY_ORIENTATION_LANDSCAPE_CW
+	help
+	  Select the physical installation orientation of the native 800x1280
+	  MIPI-DSI panel.  The selection is shared by the boot logo, framebuffer
+	  applications and touchscreen coordinate mapping.
+
+config BR2_A333_DISPLAY_ORIENTATION_PORTRAIT
+	bool "Portrait (0 degrees)"
+
+config BR2_A333_DISPLAY_ORIENTATION_LANDSCAPE_CW
+	bool "Landscape, clockwise (90 degrees)"
+
+config BR2_A333_DISPLAY_ORIENTATION_PORTRAIT_INVERTED
+	bool "Portrait, inverted (180 degrees)"
+
+config BR2_A333_DISPLAY_ORIENTATION_LANDSCAPE_CCW
+	bool "Landscape, counter-clockwise (270 degrees)"
+
+endchoice
+
+config BR2_A333_DISPLAY_ROTATION
+	int
+	default 0 if BR2_A333_DISPLAY_ORIENTATION_PORTRAIT
+	default 90 if BR2_A333_DISPLAY_ORIENTATION_LANDSCAPE_CW
+	default 180 if BR2_A333_DISPLAY_ORIENTATION_PORTRAIT_INVERTED
+	default 270 if BR2_A333_DISPLAY_ORIENTATION_LANDSCAPE_CCW
+
 source "$BR2_EXTERNAL_A333_PATH/package/dmx-panel/Config.in"
 
 endmenu

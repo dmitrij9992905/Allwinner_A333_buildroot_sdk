@@ -36,15 +36,18 @@ struct panel_input {
     char name[128];
     int canvas_width;
     int canvas_height;
+    unsigned int display_rotation;
     bool swap_xy;
     bool invert_x;
     bool invert_y;
     bool multitouch;
     bool has_tracking_id;
+    bool has_mt_slots;
     bool button_down;
     bool last_touching;
     bool coordinates_changed;
     bool sync_dropped;
+    bool trace_events;
     int current_slot;
     int slot_minimum;
     int slot_count;
@@ -94,93 +97,59 @@ static bool contains_case_insensitive(const char *text, const char *needle)
     return false;
 }
 
-static int read_device_name(const char *path, char *name, size_t name_size)
+static int touchscreen_name_score(const char *name)
 {
-    FILE *file;
-    size_t length;
-
-    file = fopen(path, "r");
-    if (file == NULL)
-        return -1;
-    if (fgets(name, (int)name_size, file) == NULL) {
-        int saved_errno = errno;
-        (void)fclose(file);
-        errno = saved_errno != 0 ? saved_errno : EIO;
-        return -1;
-    }
-    (void)fclose(file);
-    length = strlen(name);
-    while (length != 0 && (name[length - 1] == '\n' ||
-                           name[length - 1] == '\r')) {
-        name[--length] = '\0';
-    }
+    if (contains_case_insensitive(name, "goodix") ||
+        contains_case_insensitive(name, "gt9xx"))
+        return 100;
+    if (contains_case_insensitive(name, "chipone") ||
+        contains_case_insensitive(name, "icn"))
+        return 90;
+    if (contains_case_insensitive(name, "touchscreen") ||
+        contains_case_insensitive(name, "touch screen"))
+        return 80;
+    if (contains_case_insensitive(name, "touch"))
+        return 60;
     return 0;
 }
 
-static int discover_through_sysfs(char *path, size_t path_size)
+static int touchscreen_capability_score(int fd, const char *name)
 {
-    DIR *directory;
-    struct dirent *entry;
-    char fallback[PATH_MAX] = "";
+    unsigned long abs_bits[BIT_WORD_COUNT(ABS_MAX)] = {0};
+    unsigned long key_bits[BIT_WORD_COUNT(KEY_MAX)] = {0};
+    unsigned long property_bits[BIT_WORD_COUNT(INPUT_PROP_MAX)] = {0};
+    bool has_multitouch;
+    bool has_single_touch;
+    int score;
 
-    directory = opendir("/sys/class/input");
-    if (directory == NULL)
+    if (ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(abs_bits)), abs_bits) < 0)
         return -1;
-    while ((entry = readdir(directory)) != NULL) {
-        char name_path[PATH_MAX];
-        char name[128];
-        int written;
+    has_multitouch = TEST_BIT(abs_bits, ABS_MT_POSITION_X) &&
+                     TEST_BIT(abs_bits, ABS_MT_POSITION_Y);
+    has_single_touch = TEST_BIT(abs_bits, ABS_X) &&
+                       TEST_BIT(abs_bits, ABS_Y) &&
+                       ioctl(fd,
+                             EVIOCGBIT(EV_KEY, sizeof(key_bits)),
+                             key_bits) >= 0 &&
+                       TEST_BIT(key_bits, BTN_TOUCH);
+    if (!has_multitouch && !has_single_touch)
+        return -1;
 
-        if (strncmp(entry->d_name, "event", 5) != 0)
-            continue;
-        written = snprintf(name_path,
-                           sizeof(name_path),
-                           "/sys/class/input/%s/device/name",
-                           entry->d_name);
-        if (written < 0 || (size_t)written >= sizeof(name_path) ||
-            read_device_name(name_path, name, sizeof(name)) < 0 ||
-            !contains_case_insensitive(name, "goodix"))
-            continue;
-
-        written = snprintf(name_path,
-                           sizeof(name_path),
-                           "/dev/input/%s",
-                           entry->d_name);
-        if (written < 0 || (size_t)written >= sizeof(name_path))
-            continue;
-        if (strcasecmp(name, "Goodix Capacitive TouchScreen") == 0) {
-            if ((size_t)written >= path_size) {
-                (void)closedir(directory);
-                errno = ENAMETOOLONG;
-                return -1;
-            }
-            memcpy(path, name_path, (size_t)written + 1u);
-            (void)closedir(directory);
-            return 0;
-        }
-        if (fallback[0] == '\0')
-            (void)snprintf(fallback, sizeof(fallback), "%s", name_path);
-    }
-    (void)closedir(directory);
-
-    if (fallback[0] != '\0') {
-        size_t length = strlen(fallback);
-
-        if (length >= path_size) {
-            errno = ENAMETOOLONG;
-            return -1;
-        }
-        memcpy(path, fallback, length + 1u);
-        return 0;
-    }
-    errno = ENODEV;
-    return -1;
+    score = has_multitouch ? 100 : 80;
+    if (ioctl(fd,
+              EVIOCGPROP(sizeof(property_bits)),
+              property_bits) >= 0 &&
+        TEST_BIT(property_bits, INPUT_PROP_DIRECT))
+        score += 50;
+    return score + touchscreen_name_score(name);
 }
 
 static int discover_through_dev(char *path, size_t path_size)
 {
     DIR *directory;
     struct dirent *entry;
+    char best_path[PATH_MAX] = "";
+    int best_score = -1;
 
     directory = opendir("/dev/input");
     if (directory == NULL)
@@ -189,6 +158,7 @@ static int discover_through_dev(char *path, size_t path_size)
         char candidate[PATH_MAX];
         char name[128] = "";
         int fd;
+        int score;
         int written;
 
         if (strncmp(entry->d_name, "event", 5) != 0)
@@ -204,19 +174,24 @@ static int discover_through_dev(char *path, size_t path_size)
             continue;
         if (ioctl(fd, EVIOCGNAME(sizeof(name)), name) < 0)
             name[0] = '\0';
+        score = touchscreen_capability_score(fd, name);
         (void)close(fd);
-        if (!contains_case_insensitive(name, "goodix"))
+        if (score <= best_score)
             continue;
-        if ((size_t)written >= path_size) {
-            (void)closedir(directory);
+        best_score = score;
+        memcpy(best_path, candidate, (size_t)written + 1u);
+    }
+    (void)closedir(directory);
+    if (best_score >= 0) {
+        size_t length = strlen(best_path);
+
+        if (length >= path_size) {
             errno = ENAMETOOLONG;
             return -1;
         }
-        memcpy(path, candidate, (size_t)written + 1u);
-        (void)closedir(directory);
+        memcpy(path, best_path, length + 1u);
         return 0;
     }
-    (void)closedir(directory);
     errno = ENODEV;
     return -1;
 }
@@ -227,8 +202,6 @@ int panel_input_find_goodix(char *path, size_t path_size)
         errno = EINVAL;
         return -1;
     }
-    if (discover_through_sysfs(path, path_size) == 0)
-        return 0;
     return discover_through_dev(path, path_size);
 }
 
@@ -242,7 +215,15 @@ panel_input_t *panel_input_open(const panel_input_config_t *config,
                                char *error_text,
                                size_t error_text_size)
 {
-    panel_input_config_t defaults = {NULL, 720, 720, false, false, false};
+    panel_input_config_t defaults = {
+        .device_path = NULL,
+        .canvas_width = 720,
+        .canvas_height = 720,
+        .display_rotation = 0,
+        .swap_xy = false,
+        .invert_x = false,
+        .invert_y = false,
+    };
     const panel_input_config_t *effective = config != NULL ? config : &defaults;
     unsigned long abs_bits[BIT_WORD_COUNT(ABS_MAX)] = {0};
     panel_input_t *input;
@@ -255,12 +236,20 @@ panel_input_t *panel_input_open(const panel_input_config_t *config,
         set_error(error_text, error_text_size, "invalid input canvas size");
         return NULL;
     }
+    if (effective->display_rotation != 0 &&
+        effective->display_rotation != 90 &&
+        effective->display_rotation != 180 &&
+        effective->display_rotation != 270) {
+        errno = EINVAL;
+        set_error(error_text, error_text_size, "invalid display rotation");
+        return NULL;
+    }
     if (effective->device_path == NULL) {
         if (panel_input_find_goodix(discovered_path,
                                     sizeof(discovered_path)) < 0) {
             set_error(error_text,
                       error_text_size,
-                      "Goodix evdev device not found: %s",
+                      "touchscreen evdev device not found: %s",
                       strerror(errno));
             return NULL;
         }
@@ -277,9 +266,11 @@ panel_input_t *panel_input_open(const panel_input_config_t *config,
     input->fd = -1;
     input->canvas_width = effective->canvas_width;
     input->canvas_height = effective->canvas_height;
+    input->display_rotation = effective->display_rotation;
     input->swap_xy = effective->swap_xy;
     input->invert_x = effective->invert_x;
     input->invert_y = effective->invert_y;
+    input->trace_events = getenv("DMX_PANEL_TRACE_INPUT") != NULL;
     input->current_slot = 0;
     input->slot_count = 1;
     (void)snprintf(input->path, sizeof(input->path), "%s", device_path);
@@ -326,6 +317,7 @@ panel_input_t *panel_input_open(const panel_input_config_t *config,
         query_axis(input->fd, ABS_MT_SLOT, &slot_axis)) {
         int reported_slots = slot_axis.maximum - slot_axis.minimum + 1;
 
+        input->has_mt_slots = true;
         if (reported_slots > PANEL_INPUT_MAX_SLOTS)
             reported_slots = PANEL_INPUT_MAX_SLOTS;
         if (reported_slots > 0)
@@ -385,18 +377,39 @@ static void transform_coordinates(const panel_input_t *input,
 {
     uint32_t normalized_x = normalize_axis(raw_x, &input->x_axis);
     uint32_t normalized_y = normalize_axis(raw_y, &input->y_axis);
-    uint32_t transformed_x;
-    uint32_t transformed_y;
+    uint32_t physical_x;
+    uint32_t physical_y;
+    uint32_t logical_x;
+    uint32_t logical_y;
 
     if (input->invert_x)
         normalized_x = 65535u - normalized_x;
     if (input->invert_y)
         normalized_y = 65535u - normalized_y;
-    transformed_x = input->swap_xy ? normalized_y : normalized_x;
-    transformed_y = input->swap_xy ? normalized_x : normalized_y;
-    *x = (int)((uint64_t)transformed_x *
+    physical_x = input->swap_xy ? normalized_y : normalized_x;
+    physical_y = input->swap_xy ? normalized_x : normalized_y;
+    switch (input->display_rotation) {
+    case 90:
+        logical_x = physical_y;
+        logical_y = 65535u - physical_x;
+        break;
+    case 180:
+        logical_x = 65535u - physical_x;
+        logical_y = 65535u - physical_y;
+        break;
+    case 270:
+        logical_x = 65535u - physical_y;
+        logical_y = physical_x;
+        break;
+    case 0:
+    default:
+        logical_x = physical_x;
+        logical_y = physical_y;
+        break;
+    }
+    *x = (int)((uint64_t)logical_x *
                (unsigned int)(input->canvas_width - 1) / 65535u);
-    *y = (int)((uint64_t)transformed_y *
+    *y = (int)((uint64_t)logical_y *
                (unsigned int)(input->canvas_height - 1) / 65535u);
 }
 
@@ -404,7 +417,8 @@ static bool current_contact(panel_input_t *input, int *raw_x, int *raw_y)
 {
     int i;
 
-    if (input->multitouch && input->has_tracking_id) {
+    if (input->multitouch && input->has_mt_slots &&
+        input->has_tracking_id) {
         for (i = 0; i < input->slot_count; ++i) {
             if (input->slots[i].active) {
                 *raw_x = input->slots[i].x;
@@ -452,7 +466,8 @@ static void resynchronize_state(panel_input_t *input)
 {
     int i;
 
-    if (input->multitouch && input->has_tracking_id) {
+    if (input->multitouch && input->has_mt_slots &&
+        input->has_tracking_id) {
         int32_t tracking[PANEL_INPUT_MAX_SLOTS];
         int32_t positions_x[PANEL_INPUT_MAX_SLOTS];
         int32_t positions_y[PANEL_INPUT_MAX_SLOTS];
@@ -574,6 +589,21 @@ static bool finish_report(panel_input_t *input,
     input->last_x = x;
     input->last_y = y;
     input->coordinates_changed = false;
+    if (input->trace_events) {
+        const char *type = output->type == PANEL_POINTER_DOWN
+                               ? "DOWN"
+                               : output->type == PANEL_POINTER_UP ? "UP" : "MOVE";
+
+        fprintf(stderr,
+                "touch %s raw=%d,%d logical=%d,%d button=%d mt-slots=%d\n",
+                type,
+                raw_x,
+                raw_y,
+                output->x,
+                output->y,
+                input->button_down,
+                input->has_mt_slots);
+    }
     return true;
 }
 

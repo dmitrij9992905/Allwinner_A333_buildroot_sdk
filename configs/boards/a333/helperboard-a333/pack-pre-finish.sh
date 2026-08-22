@@ -127,6 +127,11 @@ copy_payload rootfsB.ext4 rootfsB.fex
 copy_payload oemA.ext4 oemA.fex
 copy_payload oemB.ext4 oemB.fex
 
+# Keep the userdata image small. The partition itself is full-size in the GPT;
+# a333-mount-userdata grows this ext4 filesystem to the partition on first boot.
+truncate -s 32M userdata.fex
+mkfs.ext4 -F -L userdata userdata.fex >/dev/null
+
 # fsbuild is a 32-bit vendor utility and is unavailable in some host
 # sandboxes. Recreate its FAT16 result when it did not produce the file.
 if [ ! -f boot-resource.fex ]; then

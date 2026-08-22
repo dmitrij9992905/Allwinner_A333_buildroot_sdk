@@ -24,10 +24,11 @@ typedef struct {
 } panel_pointer_event_t;
 
 typedef struct {
-    /* NULL means auto-discover an evdev node whose name contains "Goodix". */
+    /* NULL means auto-discover a direct absolute touchscreen evdev node. */
     const char *device_path;
     int canvas_width;
     int canvas_height;
+    unsigned int display_rotation;
     bool swap_xy;
     bool invert_x;
     bool invert_y;

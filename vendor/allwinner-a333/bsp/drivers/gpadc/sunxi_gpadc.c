@@ -2030,6 +2030,11 @@ static int sunxi_gpadc_probe(struct platform_device *pdev)
 	pm_runtime_mark_last_busy(chip->dev);
 	pm_runtime_put_autosuspend(chip->dev);
 
+	//ADD szbaijie
+	pm_runtime_disable(&pdev->dev);
+	sunxi_gpadc_hw_init(chip);
+	//ADD szbaijie
+
 	platform_set_drvdata(pdev, chip);
 
 #if IS_ENABLED(CONFIG_IIO)

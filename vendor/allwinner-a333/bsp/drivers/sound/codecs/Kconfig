@@ -36,6 +36,16 @@ config SND_SOC_AC107
 	  and a standard I2C interface for control data communication.
 	  Select this if your sound card has AC107.
 
+config SND_SOC_ES7210
+	tristate "Allwinner ES7210 CODEC"
+	depends on I2C
+	default n
+	help
+	  Enable support for the Allwinner ES7210 CODEC.
+	  The device provides a I2S/TDM/PDM interface for audio data
+	  and a standard I2C interface for control data communication.
+	  Select this if your sound card has ES7210.
+
 config SND_SOC_AC108
 	tristate "Allwinner AC108 CODEC"
 	depends on I2C

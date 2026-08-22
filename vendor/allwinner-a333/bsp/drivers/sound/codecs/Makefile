@@ -10,6 +10,7 @@ ccflags-y += -I $(srctree)/bsp/drivers/sound/adapter
 snd_soc_ac101-objs := ac101.o
 snd_soc_ac101b-objs := ac101b.o
 snd-soc-ac107-objs := ac107.o
+snd-soc-es7210-objs := es7210.o
 snd-soc-ac108-objs := ac108.o
 # Fsm
 snd-soc-fsm-objs   := fsm/fsm_core.o fsm/fsm_i2c.o fsm/fs16xx/fs1603.o
@@ -18,6 +19,7 @@ snd-soc-fsm-objs   := fsm/fsm_core.o fsm/fsm_i2c.o fsm/fs16xx/fs1603.o
 obj-$(CONFIG_SND_SOC_AC101)	+= snd_soc_ac101.o
 obj-$(CONFIG_SND_SOC_AC101B)	+= snd_soc_ac101b.o
 obj-$(CONFIG_SND_SOC_AC107)	+= snd-soc-ac107.o
+obj-$(CONFIG_SND_SOC_ES7210)	+= snd-soc-es7210.o
 obj-$(CONFIG_SND_SOC_AC108)	+= snd-soc-ac108.o
 # Fsm
 obj-$(CONFIG_SND_SOC_FS16XX)+= snd-soc-fsm.o

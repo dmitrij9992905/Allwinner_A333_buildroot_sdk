@@ -298,7 +298,7 @@ get_property_notify:
 				if (temp.intval)
 					det_vbus_state = USB_DET_VBUS_VALID;
 				else
-					det_vbus_state = USB_DET_VBUS_INVALID;
+					det_vbus_state = USB_DET_VBUS_VALID;
 			}
 		} else {
 			det_vbus_state = info->det_vbus_old_state;

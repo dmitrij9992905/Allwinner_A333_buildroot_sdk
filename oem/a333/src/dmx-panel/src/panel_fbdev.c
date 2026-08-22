@@ -274,7 +274,19 @@ static void initialize_pixel_tables(panel_fbdev_t *display)
         encode_component(255u, &display->variable.transp);
 }
 
-int panel_fbdev_present(panel_fbdev_t *display, const panel_canvas_t *canvas)
+static size_t scale_coordinate(unsigned int coordinate,
+                               unsigned int destination_extent,
+                               size_t source_extent)
+{
+    if (destination_extent <= 1u || source_extent <= 1u)
+        return 0;
+    return (size_t)((uint64_t)coordinate * (source_extent - 1u) /
+                    (destination_extent - 1u));
+}
+
+int panel_fbdev_present(panel_fbdev_t *display,
+                        const panel_canvas_t *canvas,
+                        unsigned int rotation)
 {
     unsigned int destination_y;
 
@@ -283,30 +295,69 @@ int panel_fbdev_present(panel_fbdev_t *display, const panel_canvas_t *canvas)
         errno = EINVAL;
         return -1;
     }
+    if (rotation != 0 && rotation != 90 &&
+        rotation != 180 && rotation != 270) {
+        errno = EINVAL;
+        return -1;
+    }
 
     for (destination_y = 0; destination_y < display->variable.yres;
          ++destination_y) {
-        size_t source_y = display->variable.yres == (unsigned int)canvas->height
-                              ? destination_y
-                              : (size_t)destination_y * (size_t)canvas->height /
-                                    display->variable.yres;
         uint8_t *destination =
             display->memory +
             (size_t)(display->variable.yoffset + destination_y) *
                 display->fixed.line_length +
             (size_t)display->variable.xoffset * display->bytes_per_pixel;
-        const panel_color_t *source =
-            canvas->pixels + source_y * canvas->stride;
         unsigned int destination_x;
 
         for (destination_x = 0; destination_x < display->variable.xres;
              ++destination_x) {
-            size_t source_x =
-                display->variable.xres == (unsigned int)canvas->width
-                    ? destination_x
-                    : (size_t)destination_x * (size_t)canvas->width /
-                          display->variable.xres;
-            uint32_t encoded = encode_pixel(display, source[source_x]);
+            size_t source_x;
+            size_t source_y;
+            uint32_t encoded;
+
+            switch (rotation) {
+            case 90:
+                source_x = scale_coordinate(destination_y,
+                                            display->variable.yres,
+                                            (size_t)canvas->width);
+                source_y = scale_coordinate(display->variable.xres - 1u -
+                                                destination_x,
+                                            display->variable.xres,
+                                            (size_t)canvas->height);
+                break;
+            case 180:
+                source_x = scale_coordinate(display->variable.xres - 1u -
+                                                destination_x,
+                                            display->variable.xres,
+                                            (size_t)canvas->width);
+                source_y = scale_coordinate(display->variable.yres - 1u -
+                                                destination_y,
+                                            display->variable.yres,
+                                            (size_t)canvas->height);
+                break;
+            case 270:
+                source_x = scale_coordinate(display->variable.yres - 1u -
+                                                destination_y,
+                                            display->variable.yres,
+                                            (size_t)canvas->width);
+                source_y = scale_coordinate(destination_x,
+                                            display->variable.xres,
+                                            (size_t)canvas->height);
+                break;
+            case 0:
+            default:
+                source_x = scale_coordinate(destination_x,
+                                            display->variable.xres,
+                                            (size_t)canvas->width);
+                source_y = scale_coordinate(destination_y,
+                                            display->variable.yres,
+                                            (size_t)canvas->height);
+                break;
+            }
+            encoded = encode_pixel(
+                display,
+                canvas->pixels[source_y * canvas->stride + source_x]);
 
             memcpy(destination +
                        (size_t)destination_x * display->bytes_per_pixel,

@@ -84,12 +84,18 @@ TARGET_AR := $(RK_APP_CROSS)-ar
 TARGET_STRIP := $(RK_APP_CROSS)-strip
 endif
 HOST_CC ?= cc
+DISPLAY_ROTATION ?= 90
+
+ifneq ($(filter 0 90 180 270,$(DISPLAY_ROTATION)),$(DISPLAY_ROTATION))
+$(error DISPLAY_ROTATION must be one of 0, 90, 180 or 270)
+endif
 
 # Keep both upstream-supported include spellings usable by application code:
 # <lvgl.h> and <lvgl/lvgl.h>.
 CPPFLAGS := -Iinclude -I$(LVGL_ROOT) -I$(dir $(LVGL_ROOT)) \
 	-D_GNU_SOURCE -DLV_CONF_INCLUDE_SIMPLE=1 -DLV_DISABLE_API_MAPPING \
-	-DDMX_PANEL_VERSION=\"$(DMX_PANEL_VERSION)\"
+	-DDMX_PANEL_VERSION=\"$(DMX_PANEL_VERSION)\" \
+	-DDMX_PANEL_DISPLAY_ROTATION=$(DISPLAY_ROTATION)
 CFLAGS := -std=c11 -Os -Wall -Wextra -Werror $(RK_APP_CROSS_CFLAGS) \
 	-ffunction-sections -fdata-sections
 LVGL_CFLAGS := $(filter-out -Werror,$(CFLAGS)) \

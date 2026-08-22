@@ -147,6 +147,35 @@ static void stmmac_exit_fs(struct net_device *dev);
 
 #define STMMAC_COAL_TIMER(x) (ns_to_ktime((x) * NSEC_PER_USEC))
 
+#define GREEN_LED 1 // 绿灯是LED1
+#define YELLOW_LED 0 // 黄灯是LED0
+
+void rtl_led_setting(struct net_device *ndev)
+{
+       struct phy_device *phydev = ndev->phydev;
+       int value, temp;
+
+    /* rtl8201/sr8201 led code */
+       phy_write(phydev, 31, 7);
+       value = phy_read(phydev, 19);
+       value &= 0xcf;
+       phy_write(phydev, 19, value);
+       phy_write(phydev, 31, 0);
+
+       /* rtl8211r led code */
+       phy_write(phydev, 0x1f, 0x0d04);
+       temp = 0x0b << (5 * GREEN_LED); // 绿灯表示连接状态
+       temp |= 0x1b << (5 * YELLOW_LED); // 黄灯表示数据包收发状态
+       // 链路支持EEE节能: 有数据传输, 黄灯闪烁, 否则熄灭
+       // 链路不支持EEE节能: 有数据传输, 黄灯闪烁, 否则常亮
+       phy_write(phydev, 0x10, temp);
+       temp = 1 << (YELLOW_LED + 1);
+       phy_write(phydev, 0x11, temp);
+       phy_write(phydev, 0x1f, 0x0);
+
+    phy_write(phydev, 0x1f, 0x0);
+}
+
 int stmmac_bus_clks_config(struct stmmac_priv *priv, bool enabled)
 {
 	int ret = 0;
@@ -3904,6 +3933,7 @@ static int stmmac_open(struct net_device *dev)
 	if (ret)
 		free_dma_desc_resources(priv, dma_conf);
 
+	rtl_led_setting(dev);
 	kfree(dma_conf);
 	return ret;
 }

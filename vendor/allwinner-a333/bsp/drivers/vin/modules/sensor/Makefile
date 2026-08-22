@@ -63,6 +63,7 @@ obj-$(CONFIG_SENSOR_OV5675)			+= ov5675_mipi.o
 obj-$(CONFIG_SENSOR_OV5695)			+= ov5695_mipi.o
 obj-$(CONFIG_SENSOR_OV8856)			+= ov8856_mipi.o
 obj-$(CONFIG_SENSOR_OV8858_R2A_4LANE)		+= ov8858_r2a_4lane.o
+obj-$(CONFIG_SENSOR_GC2093_MIPI)		+= gc2093_mipi.o
 obj-$(CONFIG_SENSOR_OV8865)			+= ov8865_mipi.o
 obj-$(CONFIG_SENSOR_OV7251)			+= ov7251_mipi.o
 obj-$(CONFIG_SENSOR_PTN)			+= pattern_source.o

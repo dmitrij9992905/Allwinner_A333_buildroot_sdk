@@ -1,0 +1,74 @@
+#!/bin/sh
+set -eu
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+
+G=/sys/kernel/config/usb_gadget/a333
+
+prepare()
+{
+    mountpoint -q /sys/kernel/config || mount -t configfs none /sys/kernel/config
+    mkdir -p "$G/strings/0x409" "$G/configs/c.1/strings/0x409"
+    echo 0x18d1 > "$G/idVendor"
+    echo 0x4ee7 > "$G/idProduct"
+    echo A333 > "$G/strings/0x409/serialnumber"
+    echo Allwinner > "$G/strings/0x409/manufacturer"
+    echo A333-ADB > "$G/strings/0x409/product"
+    echo 120 > "$G/configs/c.1/MaxPower"
+    echo adb > "$G/configs/c.1/strings/0x409/configuration"
+
+    mkdir -p /dev/usb-ffs/adb
+    if ! mountpoint -q /dev/usb-ffs/adb; then
+        mount -t functionfs adb /dev/usb-ffs/adb
+    fi
+    if [ ! -e "$G/functions/ffs.adb" ]; then
+        mkdir "$G/functions/ffs.adb"
+    fi
+    if [ ! -e "$G/configs/c.1/ffs.adb" ]; then
+        ln -s "$G/functions/ffs.adb" "$G/configs/c.1/ffs.adb"
+    fi
+}
+
+bind_gadget()
+{
+    udc=""
+    i=0
+    while [ "$i" -lt 40 ]; do
+        for node in /sys/class/udc/*; do
+            if [ -e "$node" ]; then
+                udc="$(basename "$node")"
+                break
+            fi
+        done
+        [ -n "$udc" ] && break
+        i=$((i + 1))
+        sleep 0.25
+    done
+    if [ -z "$udc" ]; then
+        echo "a333-usb-gadget: no USB device controller exposed" >&2
+        return 0
+    fi
+    echo "$udc" > "$G/UDC"
+}
+
+stop_gadget()
+{
+    if [ -e "$G/UDC" ]; then
+        echo "" > "$G/UDC" || true
+    fi
+    if [ -L "$G/configs/c.1/ffs.adb" ]; then
+        rm -f "$G/configs/c.1/ffs.adb"
+    fi
+    if [ -d "$G/functions/ffs.adb" ]; then
+        rmdir "$G/functions/ffs.adb" || true
+    fi
+    umount /dev/usb-ffs/adb 2>/dev/null || true
+}
+
+case "${1:-prepare}" in
+    prepare) prepare ;;
+    bind) bind_gadget ;;
+    stop) stop_gadget ;;
+    *) echo "Usage: $0 {prepare|bind|stop}" >&2; exit 2 ;;
+esac

@@ -83,12 +83,12 @@ static void print_usage(FILE *stream, const char *program)
     fprintf(stream,
             "Usage: %s [options]\n"
             "\n"
-            "Allwinner A333 1280x800 LVGL DMX512/RDM touch controller.\n"
+            "Allwinner A333 LVGL DMX512/RDM touch controller.\n"
             "\n"
             "Options:\n"
-            "  --serial PATH          DMX/RDM UART (default /dev/ttyS4)\n"
+            "  --serial PATH          DMX/RDM UART (default /dev/ttyS2)\n"
             "  --framebuffer PATH     framebuffer (default /dev/fb0)\n"
-            "  --input PATH           evdev node; 'auto' finds Goodix (default)\n"
+            "  --input PATH           evdev node; 'auto' finds touchscreen (default)\n"
             "  --controller-uid UID   RDM UID as MMMM:DDDDDDDD\n"
             "                         (default 7FF0:4C465831, prototype only)\n"
             "  --rs485 auto|rts       external auto-direction or kernel RTS\n"
@@ -126,7 +126,7 @@ static int parse_options(int argc,
     int index;
 
     memset(options, 0, sizeof(*options));
-    options->serial_path = "/dev/ttyS4";
+    options->serial_path = "/dev/ttyS2";
     options->framebuffer_path = "/dev/fb0";
     options->controller_uid =
         rdm_uid_from_u64(UINT64_C(0x7ff04c465831));
@@ -434,11 +434,12 @@ int main(int argc, char **argv)
     lvgl_port_get_info(port, &port_info);
     rdm_uid_format(&options.controller_uid, uid_text);
     printf("dmx-panel version: %s\n", DMX_PANEL_VERSION);
-    printf("LVGL framebuffer: %s, %dx%dx%d, %u draw lines\n",
+    printf("LVGL framebuffer: %s, %dx%dx%d, rotation %u, %u draw lines\n",
            port_info.framebuffer_path,
            port_info.framebuffer_width,
            port_info.framebuffer_height,
            port_info.framebuffer_bits_per_pixel,
+           port_info.display_rotation,
            port_info.draw_buffer_lines);
     printf("touchscreen: %s (%s)\n",
            port_info.input_path,

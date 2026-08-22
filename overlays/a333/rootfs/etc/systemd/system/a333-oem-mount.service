@@ -1,7 +1,6 @@
 [Unit]
 Description=Mount active A333 OEM filesystem
-After=local-fs-pre.target systemd-udev-settle.service
-Before=local-fs.target
+After=local-fs.target systemd-udev-settle.service
 Wants=systemd-udev-settle.service
 
 [Service]
@@ -11,4 +10,4 @@ ExecStop=/usr/sbin/a333-mount-oem stop
 RemainAfterExit=yes
 
 [Install]
-WantedBy=local-fs.target
+WantedBy=multi-user.target

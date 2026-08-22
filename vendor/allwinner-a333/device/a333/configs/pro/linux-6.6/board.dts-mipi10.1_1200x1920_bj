@@ -1561,8 +1561,8 @@
 	//enable-active-high;
 	//usb_gma340_oe_gpio = <>;
 	//enable-active-high;
-	drvvbus-supply = <&reg_usb0_vbus>;
-	aw,vbus-shared-quirk;
+	drvvbus-supply = <&reg_drivevbus>;
+	//aw,vbus-shared-quirk;
 	aw,u2drd-u3host-quirk;
 	status = "okay";
 };
@@ -1766,15 +1766,27 @@
 	/* 必须配置的属性 */
     gpadc_sample_rate = <1000>;        /* 采样率，单位Hz，典型值250或500 */
     channel_num = <5>;          /* 启用通道数量，至少1个 */
-	channel_select = <0x10>;      /* 通道选择,这里是gpadc0-5 */
-	channel_data_select = <0x10>; // 使能通道数据
-	channel_compare_select = <0x10>;//使用通道比较功能
-	channel_cld_select = <0x10>;//使用数据小于比较功能
-	channel_chd_select = <0x10>;//使用数据大于比较功能
-	channel0_compare_lowdata = <1700000>; //channel0数据小于该值触发中断
-	channel0_compare_higdata = <200000>; //channel0数据大于该值触发中断
-
-	status = "okay";
+	channel_select = <0x4>;      /* 通道选择,这里是gpadc0-5 */
+	channel_data_select = <0x4>; // 使能通道数据
+	channel_compare_select = <0x4>;//使用通道比较功能
+	channel_cld_select = <0x4>;//使用数据小于比较功能
+	channel_chd_select = <0x0>;//使用数据大于比较功能
+	channel0_compare_lowdata=<1700000>;//channel0数据小于该值触发中断
+	channel0_compare_higdata=<1200000>;//channel0数据大于该值触发中断
+	channel1_compare_lowdata=<1700000>;
+	channel1_compare_higdata=<1200000>;
+	channel2_compare_lowdata=<1700000>;
+	channel2_compare_higdata=<1200000>;
+    status = "okay";
+	wakeup-source;
+    //支持多个adc通道作按键，按键配置方式如下：
+    keyadc2 {
+        key_cnt = <2>; //按键个数
+        key0_vol = <1030>; //按键按下时电压值，单位为毫伏
+        key0_val = <115>;//按键上报的值
+        key1_vol = <1340>;
+        key1_val = <114>;
+    };
 };
 
 &ve {
@@ -1810,7 +1822,8 @@
 	pa-pin-max	= <1>;
 	pa-pin-0        = <&r_pio PL 4 GPIO_ACTIVE_HIGH>;
 	pa-pin-level-0	= <1>;
-	pa-pin-msleep-0	= <0>;
+	pa-pin-msleep-0	= <120>;
+	pa-pin-msleep-1	= <120>;
 
 	jack-det-level		= <0>;
 	jack-det-threshold	= <8>;
@@ -2257,6 +2270,7 @@
 		sensor00_act_used = <1>;
 		sensor00_act_name = "dw9714_act";
 		sensor00_act_twi_addr = <0x18>;
+
 		sensor01_mname = "ov5648_mipi";
 		sensor01_twi_addr = <0x6c>;
 		sensor01_type = <1>;
@@ -2265,14 +2279,16 @@
 		sensor01_act_used = <1>;
 		sensor01_act_name = "dw9714_act";
 		sensor01_act_twi_addr = <0x18>;
-		sensor02_mname = "";
-		sensor02_twi_addr = <>;
-		sensor02_type = <>;
-		sensor02_hflip =  <>;
-		sensor02_vflip = <>;
-		sensor02_act_used = <>;
-		sensor02_act_name = "";
-		sensor02_act_twi_addr = <>;
+
+		sensor02_mname = "gc2093_mipi";
+		sensor02_twi_addr = <0x6e>;
+		sensor02_type = <1>;
+		sensor02_hflip =  <0>;
+		sensor02_vflip = <0>;
+		sensor02_act_used = <0>;
+		sensor02_act_name = "dw9714_act";
+		sensor02_act_twi_addr = <0x18>;
+
 		status = "okay";
 	};
 

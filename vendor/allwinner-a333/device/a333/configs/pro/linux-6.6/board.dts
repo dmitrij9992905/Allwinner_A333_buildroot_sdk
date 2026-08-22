@@ -295,32 +295,228 @@
 		reset-delay-ms = <10>;
 		reset-gpios = <&pio PB 7 GPIO_ACTIVE_HIGH>; // LCD-RST
 		backlight = <&backlight0>;
-		// dsi,flags = <(MIPI_DSI_MODE_VIDEO | MIPI_DSI_SLAVE_MODE)>;
-		dsi,flags = <(MIPI_DSI_MODE_VIDEO | MIPI_DSI_SYNC_INCELL)>;
+		//panel-id-value = [04 66];
+		//width-mm = <56>;//屏幕物理宽度
+		//height-mm = <94>;
+	//	dsi,flags = <(MIPI_DSI_MODE_VIDEO | MIPI_DSI_SLAVE_MODE)>;
+		dsi,flags = <MIPI_DSI_MODE_VIDEO>;
 		dsi,lanes = <4>;
 		dsi,format = <0>;
 		panel-init-sequence = [
+			39 00 04 FF 98 81 03
+			15 00 02 01 00
+			15 00 02 02 00
+			15 00 02 03 57
+			15 00 02 04 D3
+			15 00 02 05 00
+			15 00 02 06 11
+			15 00 02 07 08
+			15 00 02 08 00
+			15 00 02 09 00
+			15 00 02 0a 3F
+			15 00 02 0b 00
+			15 00 02 0c 00
+			15 00 02 0d 00
+			15 00 02 0e 00
+			15 00 02 0f 3F
+			15 00 02 10 3F
+			15 00 02 11 00
+			15 00 02 12 00
+			15 00 02 13 00
+			15 00 02 14 00
+			15 00 02 15 00
+			15 00 02 16 00
+			15 00 02 17 00
+			15 00 02 18 00
+			15 00 02 19 00
+			15 00 02 1a 00
+			15 00 02 1b 00
+			15 00 02 1c 00
+			15 00 02 1d 00
+			15 00 02 1e 40
+			15 00 02 1f 80
+			15 00 02 20 06
+			15 00 02 21 01
+			15 00 02 22 00
+			15 00 02 23 00
+			15 00 02 24 00
+			15 00 02 25 00
+			15 00 02 26 00
+			15 00 02 27 00
+			15 00 02 28 33
+			15 00 02 29 33
+			15 00 02 2a 00
+			15 00 02 2b 00
+			15 00 02 2c 00
+			15 00 02 2d 00
+			15 00 02 2e 00
+			15 00 02 2f 00
+			15 00 02 30 00
+			15 00 02 31 00
+			15 00 02 32 00
+			15 00 02 33 00
+			15 00 02 34 00
+			15 00 02 35 00
+			15 00 02 36 00
+			15 00 02 37 00
+			15 00 02 38 78
+			15 00 02 39 00
+			15 00 02 3a 00
+			15 00 02 3b 00
+			15 00 02 3c 00
+			15 00 02 3d 00
+			15 00 02 3e 00
+			15 00 02 3f 00
+			15 00 02 40 00
+			15 00 02 41 00
+			15 00 02 42 00
+			15 00 02 43 00
+			15 00 02 44 00
+			15 00 02 50 00
+			15 00 02 51 23
+			15 00 02 52 45
+			15 00 02 53 67
+			15 00 02 54 89
+			15 00 02 55 ab
+			15 00 02 56 01
+			15 00 02 57 23
+			15 00 02 58 45
+			15 00 02 59 67
+			15 00 02 5A 89
+			15 00 02 5B ab
+			15 00 02 5C cd
+			15 00 02 5D ef
+			15 00 02 5e 00
+			15 00 02 5f 0D
+			15 00 02 60 0D
+			15 00 02 61 0C
+			15 00 02 62 0C
+			15 00 02 63 0F
+			15 00 02 64 0F
+			15 00 02 65 0E
+			15 00 02 66 0E
+			15 00 02 67 08
+			15 00 02 68 02
+			15 00 02 69 02
+			15 00 02 6a 02
+			15 00 02 6b 02
+			15 00 02 6c 02
+			15 00 02 6d 02
+			15 00 02 6e 02
+			15 00 02 6f 02
+			15 00 02 70 14
+			15 00 02 71 15
+			15 00 02 72 06
+			15 00 02 73 02
+			15 00 02 74 02
+			15 00 02 75 0D
+			15 00 02 76 0D
+			15 00 02 77 0C
+			15 00 02 78 0C
+			15 00 02 79 0F
+			15 00 02 7a 0F
+			15 00 02 7b 0E
+			15 00 02 7c 0E
+			15 00 02 7d 08
+			15 00 02 7e 02
+			15 00 02 7f 02
+			15 00 02 80 02
+			15 00 02 81 02
+			15 00 02 82 02
+			15 00 02 83 02
+			15 00 02 84 02
+			15 00 02 85 02
+			15 00 02 86 14
+			15 00 02 87 15
+			15 00 02 88 06
+			15 00 02 89 02
+			15 00 02 8A 02
+			39 00 04 FF 98 81 04
+			15 00 02 6E 3A
+			15 00 02 6F 57
+			15 00 02 35 1F
+			15 00 02 3A 24
+			15 00 02 8D 1F
+			15 00 02 87 BA
+			15 00 02 B2 D1
+			15 00 02 88 0B
+			15 00 02 38 01
+			15 00 02 39 00
+			15 00 02 B5 07
+			15 00 02 31 75
+			15 00 02 3B 98
+			39 00 04 FF 98 81 01
+			15 00 02 22 0A
+			15 00 02 31 09
+			15 00 02 35 07
+			15 00 02 53 82
+			15 00 02 55 84
+			15 00 02 50 85
+			15 00 02 51 80
+			15 00 02 60 10
+			15 00 02 62 00
+			15 00 02 42 55
+			15 00 02 A0 0C
+			15 00 02 A1 16
+			15 00 02 A2 23
+			15 00 02 A3 12
+			15 00 02 A4 14
+			15 00 02 A5 27
+			15 00 02 A6 1C
+			15 00 02 A7 1D
+			15 00 02 A8 7E
+			15 00 02 A9 1D
+			15 00 02 AA 29
+			15 00 02 AB 6C
+			15 00 02 AC 19
+			15 00 02 AD 16
+			15 00 02 AE 49
+			15 00 02 AF 20
+			15 00 02 B0 27
+			15 00 02 B1 50
+			15 00 02 B2 64
+			15 00 02 B3 3F
+			15 00 02 C0 00
+			15 00 02 C1 16
+			15 00 02 C2 23
+			15 00 02 C3 12
+			15 00 02 C4 14
+			15 00 02 C5 27
+			15 00 02 C6 1C
+			15 00 02 C7 1D
+			15 00 02 C8 7F
+			15 00 02 C9 1D
+			15 00 02 CA 29
+			15 00 02 CB 6C
+			15 00 02 CC 19
+			15 00 02 CD 16
+			15 00 02 CE 49
+			15 00 02 CF 20
+			15 00 02 D0 27
+			15 00 02 D1 50
+			15 00 02 D2 64
+			15 00 02 D3 3F
+			39 0F 04 FF 98 81 00
 			05 32 01 11
 			05 05 01 29
 		];
-
 		panel-exit-sequence = [
-			05 00 01 28
-			05 78 01 10
+			05 14 01 28
+			05 50 01 10
 		];
 
 		display-timings {
 			native-mode = <&timing3>;
 			timing3: timing3 {
-				clock-frequency = <160465820>;
-				hactive = <1200>;
-				vactive = <1920>;
-				hback-porch = <50>;
-				hfront-porch = <88>;
-				hsync-len = <10>;
-				vback-porch = <21>;
-				vfront-porch = <39>;
-				vsync-len = <4>;
+				clock-frequency = <61440000>;   /* lcd_ht * lcd_vt * 60 */
+				hback-porch = <40>;				/* lcd_hbp - lcd_hspw */
+				hactive = <800>;				/* lcd_x */
+				hfront-porch = <40>;			/* lcd_ht - lcd_x - lcd_hbp */
+				hsync-len = <20>;				/* lcd_hspw */
+				vback-porch = <12>;				/* lcd_vbp - lcd_vspw */
+				vactive = <1280>;				/* lcd_y */
+				vfront-porch = <30>;			/* lcd_vt - lcd_y - lcd_vbp */
+				vsync-len = <4>;				/* lcd_vspw */
 			};
 		};
 		port {
@@ -716,7 +912,7 @@
 	vmmc-supply = <&reg_cldo3>;
 	/*emmc io vol 1.8v*/
 	vqmmc-supply = <&reg_cldo1>;
-	status = "okay";
+	status = "disabled";
 };
 
 &sdc0 {
@@ -913,7 +1109,7 @@
 		ch2-dig-vol             = <160>;
 		ch1-pga-gain            = <26>;
 		ch2-pga-gain            = <26>;
-		status                  = "okay";
+		status                  = "disabled";
 	};
 };
 
@@ -1475,8 +1671,8 @@
         ctp_name = "gt9xxnew_ts";
         ctp_twi_id = <0x0>;
         ctp_twi_addr = <0x5d>;
-        ctp_screen_max_x = <800>;
-        ctp_screen_max_y = <1280>;
+        ctp_screen_max_x = <1280>;
+        ctp_screen_max_y = <800>;
         ctp_revert_x_flag = <0>;
         ctp_revert_y_flag = <0>;
         ctp_exchange_x_y_flag = <0x0>;
@@ -1561,8 +1757,8 @@
 	//enable-active-high;
 	//usb_gma340_oe_gpio = <>;
 	//enable-active-high;
-	drvvbus-supply = <&reg_usb0_vbus>;
-	aw,vbus-shared-quirk;
+	drvvbus-supply = <&reg_drivevbus>;
+	//aw,vbus-shared-quirk;
 	aw,u2drd-u3host-quirk;
 	status = "okay";
 };
@@ -1766,15 +1962,27 @@
 	/* 必须配置的属性 */
     gpadc_sample_rate = <1000>;        /* 采样率，单位Hz，典型值250或500 */
     channel_num = <5>;          /* 启用通道数量，至少1个 */
-	channel_select = <0x10>;      /* 通道选择,这里是gpadc0-5 */
-	channel_data_select = <0x10>; // 使能通道数据
-	channel_compare_select = <0x10>;//使用通道比较功能
-	channel_cld_select = <0x10>;//使用数据小于比较功能
-	channel_chd_select = <0x10>;//使用数据大于比较功能
-	channel0_compare_lowdata = <1700000>; //channel0数据小于该值触发中断
-	channel0_compare_higdata = <200000>; //channel0数据大于该值触发中断
-
-	status = "okay";
+	channel_select = <0x4>;      /* 通道选择,这里是gpadc0-5 */
+	channel_data_select = <0x4>; // 使能通道数据
+	channel_compare_select = <0x4>;//使用通道比较功能
+	channel_cld_select = <0x4>;//使用数据小于比较功能
+	channel_chd_select = <0x0>;//使用数据大于比较功能
+	channel0_compare_lowdata=<1700000>;//channel0数据小于该值触发中断
+	channel0_compare_higdata=<1200000>;//channel0数据大于该值触发中断
+	channel1_compare_lowdata=<1700000>;
+	channel1_compare_higdata=<1200000>;
+	channel2_compare_lowdata=<1700000>;
+	channel2_compare_higdata=<1200000>;
+    status = "okay";
+	wakeup-source;
+    //支持多个adc通道作按键，按键配置方式如下：
+    keyadc2 {
+        key_cnt = <2>; //按键个数
+        key0_vol = <1030>; //按键按下时电压值，单位为毫伏
+        key0_val = <115>;//按键上报的值
+        key1_vol = <1340>;
+        key1_val = <114>;
+    };
 };
 
 &ve {
@@ -1810,7 +2018,8 @@
 	pa-pin-max	= <1>;
 	pa-pin-0        = <&r_pio PL 4 GPIO_ACTIVE_HIGH>;
 	pa-pin-level-0	= <1>;
-	pa-pin-msleep-0	= <0>;
+	pa-pin-msleep-0	= <120>;
+	pa-pin-msleep-1	= <120>;
 
 	jack-det-level		= <0>;
 	jack-det-threshold	= <8>;
@@ -1908,7 +2117,7 @@
 	pinctrl-1	= <&i2s0_pins_e>;
 	tx-hub-en;
 	rx-sync-en;
-	status		= "okay";
+	status		= "disabled";
 };
 
 &i2s0_mach {
@@ -1920,7 +2129,7 @@
 	soundcard-mach,slot-num		= <2>;
 	soundcard-mach,slot-width	= <32>;
 	soundcard-mach,capture-only;
-	status		= "okay";
+	status		= "disabled";
 	i2s0_cpu: soundcard-mach,cpu {
 		sound-dai = <&i2s0_plat>;
 		/* note: pll freq = 24.576M or 22.5792M * pll-fs */
@@ -1953,7 +2162,7 @@
 	pinctrl-1	= <&i2s1_pins_e>;
 	tx-hub-en;
 	rx-sync-en;
-	status		= "okay";
+	status		= "disabled";
 };
 
 &i2s1_mach {
@@ -1964,7 +2173,7 @@
 	soundcard-mach,bitclock-inversion;
 	soundcard-mach,slot-num		= <2>;
 	soundcard-mach,slot-width	= <16>;
-	status		= "okay";
+	status		= "disabled";
 	i2s1_cpu: soundcard-mach,cpu {
 		sound-dai = <&i2s1_plat>;
 		soundcard-mach,pll-fs	= <1>;
@@ -2257,6 +2466,7 @@
 		sensor00_act_used = <1>;
 		sensor00_act_name = "dw9714_act";
 		sensor00_act_twi_addr = <0x18>;
+
 		sensor01_mname = "ov5648_mipi";
 		sensor01_twi_addr = <0x6c>;
 		sensor01_type = <1>;
@@ -2265,14 +2475,16 @@
 		sensor01_act_used = <1>;
 		sensor01_act_name = "dw9714_act";
 		sensor01_act_twi_addr = <0x18>;
-		sensor02_mname = "";
-		sensor02_twi_addr = <>;
-		sensor02_type = <>;
-		sensor02_hflip =  <>;
-		sensor02_vflip = <>;
-		sensor02_act_used = <>;
-		sensor02_act_name = "";
-		sensor02_act_twi_addr = <>;
+
+		sensor02_mname = "gc2093_mipi";
+		sensor02_twi_addr = <0x6e>;
+		sensor02_type = <1>;
+		sensor02_hflip =  <0>;
+		sensor02_vflip = <0>;
+		sensor02_act_used = <0>;
+		sensor02_act_name = "dw9714_act";
+		sensor02_act_twi_addr = <0x18>;
+
 		status = "okay";
 	};
 

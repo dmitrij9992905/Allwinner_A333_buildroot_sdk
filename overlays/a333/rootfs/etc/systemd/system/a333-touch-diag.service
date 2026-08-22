@@ -1,0 +1,11 @@
+[Unit]
+Description=Probe A333 touch-controller I2C addresses
+After=systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/a333-touch-diag
+
+[Install]
+WantedBy=multi-user.target

@@ -26,8 +26,13 @@ int panel_fbdev_height(const panel_fbdev_t *display);
 int panel_fbdev_bits_per_pixel(const panel_fbdev_t *display);
 const char *panel_fbdev_path(const panel_fbdev_t *display);
 
-/* Nearest-neighbour scales the canvas to the active framebuffer viewport. */
-int panel_fbdev_present(panel_fbdev_t *display, const panel_canvas_t *canvas);
+/*
+ * Rotate clockwise by 0/90/180/270 degrees and nearest-neighbour scale the
+ * logical canvas to the active framebuffer viewport.
+ */
+int panel_fbdev_present(panel_fbdev_t *display,
+                        const panel_canvas_t *canvas,
+                        unsigned int rotation);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+if [ "${1:-}" != --confirm ]; then
+    echo "Usage: a333-factory-reset --confirm" >&2
+    echo "This reformats and reinitialises userdata." >&2
+    exit 2
+fi
+device=$(sed -n 's/.*[[:space:]]userdata=\([^[:space:]]*\).*/\1/p' /proc/cmdline || true)
+[ -b "$device" ] || device=/dev/mmcblk0p10
+/usr/sbin/a333-mount-userdata stop || true
+[ -b "$device" ] || { echo "a333-factory-reset: userdata device unavailable" >&2; exit 1; }
+mkfs.ext4 -F -L userdata "$device" >/dev/null
+/usr/sbin/a333-mount-userdata start
+echo "Factory reset complete. Userdata was reformatted and reinitialised."
