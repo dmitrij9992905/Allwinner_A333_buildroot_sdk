@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+key_dir=/var/lib/ssh
+install -d -m 0700 "$key_dir"
+
+if [ ! -s "$key_dir/ssh_host_ed25519_key" ]; then
+    ssh-keygen -q -t ed25519 -N '' -f "$key_dir/ssh_host_ed25519_key"
+fi
+if [ ! -s "$key_dir/ssh_host_rsa_key" ]; then
+    ssh-keygen -q -t rsa -b 3072 -N '' -f "$key_dir/ssh_host_rsa_key"
+fi
+
+chmod 0600 "$key_dir"/ssh_host_*_key
+chmod 0644 "$key_dir"/ssh_host_*_key.pub

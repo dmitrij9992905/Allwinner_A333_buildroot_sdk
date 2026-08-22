@@ -1,0 +1,32 @@
+From 632c6710252e559a53efe561c3d26089fe5ce268 Mon Sep 17 00:00:00 2001
+From: HelperBoard A333 Buildroot <buildroot@helperboard.local>
+Date: Sat, 22 Aug 2026 10:45:00 +0300
+Subject: [PATCH] adbd: listen on TCP alongside USB FunctionFS
+
+The non-Android adbd port only starts TCP transport when no USB endpoint is
+present. This makes TCP/5555 disappear as soon as the USB gadget is prepared.
+Keep the USB transport and always start the TCP transport as well.
+---
+ core/adbd/adb.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/core/adbd/adb.c b/core/adbd/adb.c
+index 38b0d79..02d04fb 100644
+--- a/core/adbd/adb.c
++++ b/core/adbd/adb.c
+@@ -1325,10 +1325,8 @@ int adb_main(int is_daemon, int server_port)
+     //    local_init(port);
+     //} else 
+-    if (!usb) {
+-        printf("Using USB\n");
+-        // listen on default port
+-        local_init(DEFAULT_ADB_LOCAL_TRANSPORT_PORT);
+-    }
++    printf("Listening on TCP port %d%s\n", DEFAULT_ADB_LOCAL_TRANSPORT_PORT,
++           usb ? " alongside USB" : "");
++    local_init(DEFAULT_ADB_LOCAL_TRANSPORT_PORT);
+ 
+     D("adb_main(): pre init_jdwp()\n");
+     init_jdwp();
+-- 
+2.51.0

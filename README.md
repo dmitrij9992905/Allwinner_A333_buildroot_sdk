@@ -1,279 +1,358 @@
-# Система сборки Allwinner A333 на базе Buildroot
+# Buildroot-based Allwinner A333 Build System
 
-Проект предназначен для независимой сборки Linux-системы для модуля
-Allwinner A333 с платой HelperBoard и MIPI-дисплеем 1280×800.
+[Russian version](README_RU.md)
 
-В основе используется Buildroot 2025.02.16. Система собирается с `systemd`,
-`glibc` и целевым toolchain AArch64. Vendor-ядро Linux 6.6, BSP, DTS и U-Boot
-взяты из исходного Allwinner SDK. Оригинальный 32-битный Linaro toolchain
-используется только для сборки vendor U-Boot.
+This project provides an independent Linux build system for an Allwinner A333
+module installed on a HelperBoard with a 1280×800 MIPI display.
 
-Проект разделён на базовую ОС и отдельный раздел `OEM` для бизнес-логики.
-Поддерживается A/B-разметка с отдельными слотами rootfs и OEM, а также
-подготовка подписанного RAUC bundle для обновления уже установленной системы.
+It is based on Buildroot 2025.02.16 and builds a system using `systemd`,
+`glibc`, and an AArch64 target toolchain. The vendor Linux 6.6 kernel, BSP,
+DTS, and U-Boot are taken from the original Allwinner SDK. The original 32-bit
+Linaro toolchain is used only to build the vendor U-Boot.
 
-## Структура проекта
+The project separates the base operating system from an `OEM` partition that
+contains application-specific logic. It supports an A/B partition layout with
+separate rootfs and OEM slots and can produce a signed RAUC bundle for updating
+an installed system.
+
+## Project layout
 
 ```text
-buildroot/                  исходный Buildroot
-configs/                    BR2_EXTERNAL, defconfig и настройки платы
-overlays/                   файлы базовой rootfs
-oem/                        приложения и содержимое OEM-раздела
-vendor/allwinner-a333/      kernel, BSP, DTS, U-Boot и pack SDK Allwinner
-scripts/                    подготовка boot.img, полного образа и RAUC bundle
-Dockerfile                  контейнер окружения сборки
-docker-build.sh             wrapper для Docker-сборки
-output/                     результат сборки, игнорируется Git
-dl/, ccache/, toolchains/   локальные кэши и toolchain, игнорируются Git
+buildroot/                  Buildroot sources
+configs/                    BR2_EXTERNAL, defconfig, and board configuration
+overlays/                   base rootfs files
+oem/                        applications and OEM partition contents
+vendor/allwinner-a333/      Allwinner kernel, BSP, DTS, U-Boot, and pack SDK
+scripts/                    boot.img, full image, and RAUC bundle generation
+Dockerfile                  build environment container
+docker-build.sh             Docker build wrapper
+output/                     build output, ignored by Git
+dl/, ccache/, toolchains/   local caches and toolchains, ignored by Git
 ```
 
-## Сборка
+## Building
 
-Требуется Docker Engine; Docker Compose Plugin для основного wrapper не обязателен.
-Все host-зависимости устанавливаются внутри Docker-образа.
+Docker Engine is required. The Docker Compose plugin is not required by the
+main wrapper. All host dependencies are installed inside the Docker image.
 
-Сначала собрать Docker-образ:
+First, build the Docker image:
 
 ```sh
 ./docker-build.sh build
 ```
 
-Подготовить локальные архивы vendor-исходников и применить конфигурацию платы:
+Prepare local vendor source archives and apply the board configuration:
 
 ```sh
 ./docker-build.sh prepare-sources
 ./docker-build.sh make BR2_EXTERNAL=../configs O=../output a333_helperboard_defconfig
 ```
 
-Запустить сборку:
+Start the build:
 
 ```sh
 ./docker-build.sh make BR2_EXTERNAL=../configs O=../output
 ```
 
-Последний post-image шаг автоматически создаёт `boot.img`, A/B payload-файлы,
-RAUC bundle и полный vendor-образ через скопированный из оригинального SDK
-упаковщик `dragon`. Для повторной упаковки без пересборки Buildroot можно
-запустить внутри контейнера:
+The final post-image step automatically creates `boot.img`, A/B payload
+files, a RAUC bundle, and a complete vendor image using the `dragon` packer
+copied from the original SDK. To repack the image without rebuilding Buildroot,
+run the following command inside the container:
 
 ```sh
 ./docker-build.sh /workspace/scripts/pack-a333-image.sh /workspace/output/images
 ```
 
-Временные данные упаковщика находятся в `output/images/.a333-pack/` и
-игнорируются Git.
+Temporary packer data is stored in `output/images/.a333-pack/` and ignored by
+Git.
 
-Для изменения параметров Buildroot:
+To change Buildroot settings:
 
 ```sh
 ./docker-build.sh make BR2_EXTERNAL=../configs O=../output menuconfig
 ```
 
-Скачанные исходники и кэш компилятора сохраняются в `dl/` и `ccache/` внутри
-проекта. Это ускоряет повторные сборки и не зависит от версии Ubuntu на хосте.
+Downloaded sources and the compiler cache are kept in the project's `dl/` and
+`ccache/` directories. This speeds up subsequent builds and avoids depending
+on the Ubuntu version installed on the host.
 
-## Готовые артефакты
+## Build artifacts
 
-После успешной сборки файлы находятся в:
+After a successful build, the files are available in:
 
 ```text
 output/images/
 ```
 
-Основные файлы:
+Main artifacts:
 
-| Файл | Назначение |
+| File | Purpose |
 |---|---|
-| `u-boot.bin` | vendor U-Boot для первичной установки |
-| `board.dtb` | device tree платы |
-| `Image.A`, `Image.B` | копии kernel Image для слотов A/B |
-| `rootfsA.ext4`, `rootfsB.ext4` | базовая ОС для rootfs-слотов A/B |
-| `oemA.ext4`, `oemB.ext4` | OEM-разделы A/B |
-| `boot.img` | kernel + DTB для vendor packer |
-| `a333-helperboard-full.img` | полный vendor-образ для первой прошивки eMMC |
-| `a333-helperboard-sys_partition.fex` | A/B-карта, использованная при упаковке |
-| `a333-helperboard.raucb` | подписанный пакет обновления RAUC |
+| `u-boot.bin` | vendor U-Boot for initial installation |
+| `board.dtb` | board device tree |
+| `Image.A`, `Image.B` | kernel Image copies for A/B slots |
+| `rootfsA.ext4`, `rootfsB.ext4` | base operating system for rootfs A/B slots |
+| `oemA.ext4`, `oemB.ext4` | OEM A/B partitions |
+| `boot.img` | kernel and DTB for the vendor packer |
+| `a333-helperboard-full.img` | complete vendor image for the initial eMMC flash |
+| `a333-helperboard-sys_partition.fex` | A/B partition map used by the packer |
+| `a333-helperboard.raucb` | signed RAUC update bundle |
 
-В OEM-раздел сейчас входит демонстрационное приложение `dmx-panel`,
-перенесённое из Luckfox Pico Panel86 и адаптированное для framebuffer
-1280×800. Исходники находятся в
-[`oem/a333/src/dmx-panel`](oem/a333/src/dmx-panel), а после post-build файл
-попадает в `/oem/usr/bin/dmx-panel`.
+The OEM partition currently contains the `dmx-panel` demonstration
+application, ported from the Luckfox Pico Panel86 and adapted for a 1280×800
+framebuffer. Its sources are located in
+[`oem/a333/src/dmx-panel`](oem/a333/src/dmx-panel). After the post-build step,
+the binary is installed as `/oem/usr/bin/dmx-panel`.
 
-При загрузке systemd автоматически запускает демо с параметрами
-`--simulate --allow-missing-input`. Это режим проверки дисплея и интерфейса:
-виртуальные RDM-устройства используются из приложения, реальный RS485/UART не
-открывается.
+During boot, systemd automatically starts the demo with
+`--simulate --allow-missing-input`. This mode is intended for display and UI
+testing: the application uses virtual RDM devices and does not open the real
+RS485/UART interface.
 
-## Доступ через ADB
+## Device access
 
-В образ включён `adbd`, запускаемый systemd с ключом `-a` и слушающий TCP-порт
-5555. После получения IP-адреса платы на компьютере выполните:
+Default credentials:
+
+```text
+Username: root
+Password: allwinner
+```
+
+### SSH, SCP, and SFTP
+
+The image includes an OpenSSH server with password login enabled for root. Once
+the board has obtained an IP address:
 
 ```sh
-output/host/bin/adb connect <IP_ПЛАТЫ>:5555
+ssh root@<BOARD_IP>
+scp local-file root@<BOARD_IP>:/userdata/
+sftp root@<BOARD_IP>
+```
+
+SSH host keys are generated in persistent `/var/lib/ssh` during the first
+boot. They survive A/B updates but are regenerated after a factory reset.
+
+### ADB shell
+
+`adbd` is available through USB FunctionFS and TCP port 5555 at the same
+time. For USB access:
+
+```sh
+output/host/bin/adb devices
 output/host/bin/adb shell
 ```
 
-На самой плате сервис можно проверить командами:
+To connect over Ethernet or Wi-Fi:
 
 ```sh
-systemctl status adbd
-systemctl status dmx-panel
-journalctl -u dmx-panel -f
+output/host/bin/adb connect <BOARD_IP>:5555
+output/host/bin/adb shell
 ```
 
-В текущей конфигурации ADB включён по TCP/IP; доступность порта зависит от
-сетевого подключения платы. USB-gadget ADB можно добавить позже после
-подтверждения OTG-порта и UDC в финальном DTS.
+This version of `adbd` provides a root shell without ADB authentication.
+Port 5555 must therefore only be used on a trusted network.
 
-## Карта памяти и первичная прошивка платы
+Service status can be inspected with:
 
-RAUC bundle не предназначен для первичной прошивки пустой платы. На момент
-первой установки ещё нет работающей Linux-системы, RAUC, U-Boot A/B-логики и
-настроенных разделов.
+```sh
+systemctl status sshd adbd NetworkManager bluetooth
+journalctl -u sshd -u adbd -u NetworkManager -u bluetooth
+```
 
-В проект скопированы карты из оригинального SDK:
+## Network management
 
-- [`sys_partition-vendor-dragonboard-8G.fex`](configs/boards/a333/helperboard-a333/sys_partition-vendor-dragonboard-8G.fex) — исходная однократная карта для 8G;
-- [`sys_partition-vendor-dragonboard-16G.fex`](configs/boards/a333/helperboard-a333/sys_partition-vendor-dragonboard-16G.fex) — исходная однократная карта для 16G;
-- [`sys_partition-ab.fex`](configs/boards/a333/helperboard-a333/sys_partition-ab.fex) — карта этого проекта с A/B-разделами.
+Ethernet and Wi-Fi are managed by NetworkManager. The legacy parallel
+`systemd-networkd` and `wpa_supplicant@wlan0` services are not started.
+Useful commands:
 
-В A/B-карте разделы имеют номера: `p1` boot-resource, `p2` env, `p3`
-env-redund, `p4/p5` bootA/bootB, `p6/p7` rootfsA/rootfsB, `p8/p9` oemA/oemB.
-Размеры в `sys_partition-ab.fex` указаны в секторах по 512 байт, кроме
-`mbr.size`, который задаётся в килобайтах.
+```sh
+nmcli general status
+nmcli device status
+nmcli connection show
+nmcli device wifi list
+nmcli device wifi connect '<SSID>' password '<PASSWORD>' ifname wlan0
+nmcli connection up '<CONNECTION_NAME>'
+```
 
-Для первой прошивки используется именно:
+NetworkManager profiles are stored in persistent `/var/lib/NetworkManager`
+and survive A/B updates. A factory reset removes them together with the rest of
+the `userdata` contents.
+
+## Bluetooth management
+
+The image includes `bluetoothd`, `bluetoothctl`, the `btmon` diagnostic
+tool, additional BlueZ tools, and `rfkill`. Example discovery and connection
+sequence:
+
+```sh
+rfkill unblock bluetooth
+systemctl enable --now bluetooth
+bluetoothctl
+power on
+agent on
+default-agent
+scan on
+pair <MAC>
+trust <MAC>
+connect <MAC>
+```
+
+## Storage layout and initial board flashing
+
+The RAUC bundle is not intended for the initial installation on an empty
+board. At that point there is no running Linux system, RAUC installation,
+U-Boot A/B logic, or configured partition layout.
+
+The project contains partition maps copied from the original SDK:
+
+- [`sys_partition-vendor-dragonboard-8G.fex`](configs/boards/a333/helperboard-a333/sys_partition-vendor-dragonboard-8G.fex) — original single-slot map for 8 GB storage;
+- [`sys_partition-vendor-dragonboard-16G.fex`](configs/boards/a333/helperboard-a333/sys_partition-vendor-dragonboard-16G.fex) — original single-slot map for 16 GB storage;
+- [`sys_partition-ab.fex`](configs/boards/a333/helperboard-a333/sys_partition-ab.fex) — this project's A/B partition map.
+
+In the A/B map, the partition numbers are: `p1` boot-resource, `p2` env,
+`p3` env-redund, `p4/p5` bootA/bootB, `p6/p7` rootfsA/rootfsB, and
+`p8/p9` oemA/oemB. Sizes in `sys_partition-ab.fex` are specified in
+512-byte sectors, except for `mbr.size`, which is specified in kilobytes.
+
+The following image must be used for the initial flash:
 
 ```text
 output/images/a333-helperboard-full.img
 ```
 
-Это единый vendor-образ, собранный средствами оригинального Allwinner SDK и
-содержащий boot package, карту A/B, env, bootA/bootB, rootfsA/rootfsB и
-oemA/oemB. Его нужно передать штатному Allwinner-флешеру, рекомендованному
-производителем платы (PhoenixSuit/LiveSuit или совместимому варианту).
-Образ перезаписывает начало eMMC и рассчитан на текущую A/B-карту; перед
-прошивкой необходимо проверить фактический объём eMMC и сохранить данные.
+This is a complete vendor image built with the original Allwinner SDK tools. It
+contains the boot package, A/B partition map, env, bootA/bootB,
+rootfsA/rootfsB, and oemA/oemB. Flash it with the standard Allwinner tool
+recommended by the board manufacturer, such as PhoenixSuit, LiveSuit, or a
+compatible alternative.
 
-Отдельные `rootfs*.ext4`, `oem*.ext4`, `boot.img` и `.fex` полезны для
-диагностики и ручной прошивки, но не заменяют полный образ при первой
-установке. `a333-helperboard.raucb` на пустую плату записывать нельзя.
+The image overwrites the beginning of the eMMC and is built for the current A/B
+layout. Verify the actual eMMC capacity and back up important data before
+flashing.
 
-## Проверка FEL и sunxi-fel
+Individual `rootfs*.ext4`, `oem*.ext4`, `boot.img`, and `.fex` files
+are useful for diagnostics and manual flashing, but they do not replace the
+complete image during initial installation. Do not flash
+`a333-helperboard.raucb` to an empty board.
 
-На A333 устройство определяется в FEL, например:
+## FEL and sunxi-fel verification
+
+The A333 is detected in FEL mode, for example:
 
 ```sh
 sudo sunxi-fel --list --verbose
 sudo sunxi-fel -v ver
 ```
 
-Для этой платы ожидается SoC ID `0x1919` и строка вида `AWUSBFEX
-soc=00001919`. Предупреждение `no 'soc_sram_info' data for your SoC` означает,
-что установленная upstream-версия `sunxi-tools` ещё не знает SRAM-карту A333.
+For this board, the expected SoC ID is `0x1919`, with an identification
+string such as `AWUSBFEX soc=00001919`. The warning
+`no 'soc_sram_info' data for your SoC` means that the installed upstream
+`sunxi-tools` version does not yet know the A333 SRAM map.
 
-Для загрузки FES используется собранный A333-aware `xfel`, а не обычная
-upstream-версия `sunxi-fel`:
+Use the built A333-aware `xfel` implementation to load FES instead of the
+regular upstream `sunxi-fel`:
 
 ```sh
 sudo ../xfel/xfel version
 ```
 
-Скрипт FEL-этапа:
+FEL stage script:
 
 ```sh
 scripts/flash-a333-fel.sh --dry-run
 sudo scripts/flash-a333-fel.sh --xfel ../xfel/xfel
 ```
 
-Он выполняет следующую последовательность:
+It performs the following sequence:
 
-1. загружает `fes1.fex` по адресу `0x0004c000` и запускает его;
-2. ждёт повторного появления A333 в FEL после инициализации DRAM;
-3. загружает `u-boot.fex` по `0x4a000000`, `sunxi.fex` по `0x4a200000`,
-   `config.fex` по `0x4a300000` и `board.fex` по `0x4a380000`;
-4. запускает U-Boot с `work_mode=0x10`, то есть в USB EFEX/product mode.
+1. Loads `fes1.fex` at address `0x0004c000` and starts it.
+2. Waits for the A333 to reappear in FEL after DRAM initialization.
+3. Loads `u-boot.fex` at `0x4a000000`, `sunxi.fex` at `0x4a200000`,
+   `config.fex` at `0x4a300000`, and `board.fex` at `0x4a380000`.
+4. Starts U-Boot with `work_mode=0x10`, which selects USB EFEX/product mode.
 
-`sunxi.fex` — обязательный DTB/config blob для vendor U-Boot: он ищется по
-`CONFIG_SYS_TEXT_BASE + 2 MiB` (`0x4a200000`). Если его не загрузить, в UART
-появляются `FDT ERROR` и U-Boot обычно перезагружается до строк `workmode` и
-`run usb efex`.
+`sunxi.fex` is the mandatory DTB/config blob expected by vendor U-Boot at
+`CONFIG_SYS_TEXT_BASE + 2 MiB` (`0x4a200000`). If it is not loaded, the
+UART log contains `FDT ERROR`, and U-Boot normally reboots before printing
+the `workmode` and `run usb efex` messages.
 
-При подготовке U-Boot скрипт также записывает подтверждённый размер DRAM
-`2048 MiB` и пересчитывает checksum заголовка. В ручной процедуре это важно:
-поле checksum находится по смещению `0x0c`; без его пересчёта FES2 может быть
-отброшен и плата возвращается к загрузке со штатного Flash.
+When preparing U-Boot, the script also writes the confirmed DRAM size of
+`2048 MiB` and recalculates the header checksum. This is important during a
+manual procedure: the checksum field is located at offset `0x0c`. Without
+recalculation, FES2 may reject the image and the board may return to booting
+from its regular flash storage.
 
-`xfel` умеет только FEL-операции с памятью и запуск кода. Он не реализует
-протокол USB EFEX и не умеет записывать eMMC, поэтому после последнего `exec`
-нужен LiveSuit/PhoenixSuit или другой EFEX-клиент. Для запуска внешней команды
-можно передать её скрипту:
+`xfel` only implements FEL memory operations and code execution. It does not
+implement the USB EFEX protocol and cannot write to eMMC. LiveSuit,
+PhoenixSuit, or another EFEX client is therefore required after the final
+`exec`. An external command can be passed to the script.
 
-После запуска FES1 устройство может продолжать отображаться как `1f3a:efe8`,
-но перестаёт отвечать на FEL-запрос `version`. Поэтому локальная сборка
-`xfel` дополнена режимом `--no-version`; скрипт использует его только для
-загрузки U-Boot, `sunxi.fex`, `config.fex` и `board.fex` после FES1. Если инструмент был
-пересобран или заменён, выполните `(cd ../xfel && make)`.
+After FES1 starts, the device may still appear as `1f3a:efe8`, but it stops
+responding to the FEL `version` request. The local `xfel` build therefore
+includes a `--no-version` mode. The script uses it only to load U-Boot,
+`sunxi.fex`, `config.fex`, and `board.fex` after FES1. If the tool has
+been rebuilt or replaced, run `(cd ../xfel && make)`.
 
 ```sh
 scripts/flash-a333-fel.sh \
   --efex-command 'sudo ./LiveSuit'
 ```
 
-После появления USB EFEX в клиенте нужно выбрать:
+Once USB EFEX appears in the client, select:
 
 ```text
 output/images/a333-helperboard-full.img
 ```
 
-Если `--efex-command` не задан, скрипт останавливается после handoff и ничего
-не записывает в eMMC. В частности, полный `*.img` нельзя передавать в
-`xfel write`: это запись в оперативную память, а не в карту памяти. Файлы
-`sys_partition-ab.fex` и `sys_partition-vendor-*.fex` являются входными данными
-vendor-флешера, а не картой адресов для FEL.
+If `--efex-command` is not provided, the script stops after the handoff and
+does not write anything to eMMC. In particular, the complete `*.img` file
+must not be passed to `xfel write`: that command writes to RAM, not to
+persistent storage. The `sys_partition-ab.fex` and
+`sys_partition-vendor-*.fex` files are input data for the vendor flasher,
+not FEL address maps.
 
-Текущая схема прошивки:
+The current flashing workflow is:
 
-1. первая установка — `a333-helperboard-full.img` через USB EFEX/vendor-флешер;
-2. последующие обновления — `a333-helperboard.raucb` из работающей системы;
-3. `sunxi-fel`/`xfel` — диагностика и загрузка промежуточных компонентов FEL.
+1. Initial installation: `a333-helperboard-full.img` through USB EFEX and a
+   vendor flasher.
+2. Subsequent updates: `a333-helperboard.raucb` from the running system.
+3. `sunxi-fel`/`xfel`: diagnostics and loading intermediate FEL
+   components.
 
-В Ubuntu 26.04 не следует устанавливать старый LiveSuit непосредственно в
-систему: его `awusb.ko` и `libpng12` рассчитаны на старую версию ядра и
-пользовательского пространства. Документация Allwinner допускает отдельную
-Ubuntu 20.04/22.04 среду и сборку `awusb.ko`, но это не устраняет ограничение
-`xfel` по EFEX-протоколу.
+Do not install an old LiveSuit release directly on Ubuntu 26.04. Its
+`awusb.ko` and `libpng12` were built for older kernel and userspace
+versions. Allwinner documentation permits using a separate Ubuntu 20.04 or
+22.04 environment and rebuilding `awusb.ko`, but this does not remove the
+EFEX protocol limitation in `xfel`.
 
-## Обновление через RAUC
+## Updating with RAUC
 
-Для обновления уже загруженной системы используется:
+Use the following bundle to update an already running system:
 
 ```text
 output/images/a333-helperboard.raucb
 ```
 
-Bundle содержит два образа:
+The bundle contains two images:
 
-- `rootfs` — обновление неактивного rootfs-слота;
-- `oem` — обновление соответствующего OEM-слота.
+- `rootfs` — updates the inactive rootfs slot;
+- `oem` — updates the corresponding OEM slot.
 
-На целевой системе обновление запускается командой:
+Start the update on the target system with:
 
 ```sh
 rauc install /path/to/a333-helperboard.raucb
 reboot
 ```
 
-Custom RAUC backend сопоставляет операции RAUC с переменными Allwinner U-Boot
-`systemAB_next`, `systemAB_damage` и `bootcount`. После успешной загрузки
-необходимо выполнить health-check приложения и подтвердить новый слот как
-рабочий. При ошибке загрузки U-Boot должен вернуть систему на предыдущий слот.
+The custom RAUC backend maps RAUC operations to the Allwinner U-Boot
+`systemAB_next`, `systemAB_damage`, and `bootcount` variables. After a
+successful boot, run an application health check and mark the new slot as
+good. If the boot fails, U-Boot should return the system to the previous slot.
 
-В текущей сборке bundle подписывается автоматически сгенерированным
-development-сертификатом из игнорируемой папки `keys/`. Для production нужно
-передать контролируемые credentials, доступные внутри контейнера:
+The current build signs the bundle with an automatically generated development
+certificate stored in the ignored `keys/` directory. For production, provide
+controlled credentials that are accessible inside the container:
 
 ```sh
 A333_RAUC_KEY=/workspace/keys/prod.key.pem \
@@ -281,18 +360,18 @@ A333_RAUC_CERT=/workspace/keys/prod.cert.pem \
 ./docker-build.sh make BR2_EXTERNAL=../configs O=../output
 ```
 
-RAUC bundle обновляет rootfs и OEM. Он не предназначен для изменения таблицы
-разделов, boot-resource или самого U-Boot. Эти компоненты обновляются отдельной
-процедурой первичной/vendor-прошивки.
+The RAUC bundle updates rootfs and OEM. It is not intended to modify the
+partition table, boot-resource, or U-Boot itself. Those components require a
+separate initial/vendor flashing procedure.
 
-## Текущее состояние
+## Current status
 
-Сборка Buildroot, vendor kernel/BSP, U-Boot, systemd/glibc rootfs, RAUC bundle
-и полный `a333-helperboard-full.img` проверены в Docker. До использования на
-реальном железе требуется проверить MIPI-панель 1280×800, фактический объём
-eMMC, первичную прошивку, переключение A/B и rollback после неуспешной
-загрузки.
+The Buildroot build, vendor kernel/BSP, U-Boot, systemd/glibc rootfs, RAUC
+bundle, and complete `a333-helperboard-full.img` have been verified in
+Docker. Before production use on real hardware, verify the 1280×800 MIPI
+panel, actual eMMC capacity, initial flashing procedure, A/B slot switching,
+and rollback after a failed boot.
 
-Дополнительные детали по плате находятся в
-[`configs/boards/a333/helperboard-a333/README.md`](configs/boards/a333/helperboard-a333/README.md),
-а описание Docker-окружения — в [`DOCKER.md`](DOCKER.md).
+Additional board-specific details are available in
+[`configs/boards/a333/helperboard-a333/README.md`](configs/boards/a333/helperboard-a333/README.md).
+The Docker environment is described in [`DOCKER.md`](DOCKER.md).

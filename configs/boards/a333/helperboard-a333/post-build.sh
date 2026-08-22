@@ -97,30 +97,81 @@ else
 	rm -f "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/dmx-panel.service"
 fi
 
-# Enable the display demo, persistent storage, network services and ADB.
+# Enable the display demo, persistent storage, remote access and networking.
 install -d -m 0755 "$TARGET_DIR/etc/systemd/system/multi-user.target.wants"
 install -d -m 0755 "$TARGET_DIR/etc/systemd/system/local-fs.target.wants"
+install -d -m 0755 "$TARGET_DIR/etc/systemd/system/sysinit.target.wants"
 ln -sfn ../a333-touch-diag.service \
-	"$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-touch-diag.service"
+    "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-touch-diag.service"
 ln -sfn ../a333-userdata.service \
-	"$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-userdata.service"
+    "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-userdata.service"
 
-if [ -f "$TARGET_DIR/usr/lib/systemd/system/systemd-networkd.service" ]; then
-	ln -sfn /usr/lib/systemd/system/systemd-networkd.service \
-		"$TARGET_DIR/etc/systemd/system/multi-user.target.wants/systemd-networkd.service"
+rm -f "$TARGET_DIR/etc/systemd/system/network.service" \
+    "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/network.service"
+rm -f "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/systemd-networkd.service" \
+    "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/wpa_supplicant@wlan0.service"
+
+# systemd installs this tmpfiles snippet even when networkd is disabled. Its
+# systemd-network owner is intentionally absent in that configuration, which
+# makes systemd-tmpfiles --create fail while generating the root filesystem.
+rm -f "$TARGET_DIR/usr/lib/tmpfiles.d/systemd-network.conf"
+
+# Override upstream presets that otherwise re-enable networkd after this script.
+install -d -m 0755 "$TARGET_DIR/usr/lib/systemd/system-preset"
+{
+    printf '%s\n' \
+        'disable network.service' \
+        'disable systemd-network-generator.service' \
+        'disable systemd-networkd.service' \
+        'disable systemd-networkd.socket' \
+        'disable systemd-networkd-wait-online.service' \
+        'disable systemd-networkd-wait-online@.service' \
+        'disable wpa_supplicant.service' \
+        'enable NetworkManager.service' \
+        'disable NetworkManager-wait-online.service' \
+        'enable systemd-resolved.service' \
+        'enable bluetooth.service' \
+        'enable sshd.service'
+} > "$TARGET_DIR/usr/lib/systemd/system-preset/00-a333.preset"
+
+if [ -f "$TARGET_DIR/usr/lib/systemd/system/NetworkManager.service" ]; then
+    ln -sfn /usr/lib/systemd/system/NetworkManager.service \
+        "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/NetworkManager.service"
+else
+    rm -f "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/NetworkManager.service"
+fi
+
+ln -sfn /dev/null "$TARGET_DIR/etc/systemd/system/NetworkManager-wait-online.service"
+rm -f "$TARGET_DIR/etc/systemd/system/network-online.target.wants/NetworkManager-wait-online.service"
+
+if [ -f "$TARGET_DIR/usr/lib/systemd/system/systemd-resolved.service" ]; then
+    ln -sfn /usr/lib/systemd/system/systemd-resolved.service \
+        "$TARGET_DIR/etc/systemd/system/sysinit.target.wants/systemd-resolved.service"
 fi
 
 if [ -f "$TARGET_DIR/usr/lib/systemd/system/bluetooth.service" ]; then
-	ln -sfn /usr/lib/systemd/system/bluetooth.service \
-		"$TARGET_DIR/etc/systemd/system/multi-user.target.wants/bluetooth.service"
+    ln -sfn /usr/lib/systemd/system/bluetooth.service \
+        "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/bluetooth.service"
 fi
 
-ln -sfn ../wpa_supplicant@.service \
-	"$TARGET_DIR/etc/systemd/system/multi-user.target.wants/wpa_supplicant@wlan0.service"
+if [ -x "$TARGET_DIR/usr/sbin/sshd" ]; then
+    ln -sfn ../sshd.service \
+        "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/sshd.service"
+else
+    rm -f "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/sshd.service"
+fi
+
+# NetworkManager profiles must survive A/B updates and remain writable when
+# the base rootfs is made read-only. /var/lib is bind-mounted from userdata.
+install -d -m 0755 "$TARGET_DIR/etc/NetworkManager"
+install -d -m 0700 "$TARGET_DIR/var/lib/NetworkManager/system-connections"
+rm -rf "$TARGET_DIR/etc/NetworkManager/system-connections"
+ln -s /var/lib/NetworkManager/system-connections \
+    "$TARGET_DIR/etc/NetworkManager/system-connections"
 
 if [ -x "$TARGET_DIR/usr/bin/adbd" ]; then
-	ln -sfn ../adbd.service \
-		"$TARGET_DIR/etc/systemd/system/multi-user.target.wants/adbd.service"
+    ln -sfn ../adbd.service \
+        "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/adbd.service"
 else
-	rm -f "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/adbd.service"
+    rm -f "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/adbd.service"
 fi
