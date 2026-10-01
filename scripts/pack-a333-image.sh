@@ -28,6 +28,9 @@ CONFIG_FILE="${BR2_CONFIG:-$OUTPUT_DIR/.config}"
 DISPLAY_ROTATION="${A333_DISPLAY_ROTATION:-}"
 
 CUSTOM_ENV="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/env-ab.cfg"
+if grep -q '^BR2_A333_KERNEL_DEBUG_LOGS=y$' "$CONFIG_FILE"; then
+	CUSTOM_ENV="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/env-ab-kernel-debug-logs.cfg"
+fi
 PACK_ENV="$PACK_ROOT/device/config/chips/a333/configs/pro/dragonboard/env.cfg"
 
 for input in boot.img u-boot.bin board.dtb rootfsA.ext4 rootfsB.ext4 oemA.ext4 oemB.ext4; do

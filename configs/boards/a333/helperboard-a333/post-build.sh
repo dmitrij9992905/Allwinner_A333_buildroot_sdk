@@ -113,7 +113,7 @@ if [ "$PROFILE" = media ]; then
 	# Finalization moves the executable out of rootfs. On incremental builds
 	# Buildroot may skip package installation; reuse this profile's build output.
 	if [ ! -x "$MEDIA_PANEL_BINARY" ]; then
-		MEDIA_PANEL_BINARY="$OUTPUT_DIR/build/media-panel-1.0.0/media-panel"
+		MEDIA_PANEL_BINARY="$OUTPUT_DIR/build/media-panel-1.0.0/media-panel/buildroot-build/media-panel"
 	fi
 	if [ ! -x "$MEDIA_PANEL_BINARY" ]; then
 		echo "post-build: media profile requires media-panel binary" >&2

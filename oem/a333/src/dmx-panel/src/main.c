@@ -360,7 +360,7 @@ int main(int argc, char **argv)
     lvgl_port_config_t port_config;
     dmx_lvgl_ui_config_t ui_config;
     dmx_controller_snapshot_t snapshot;
-    dmx_lvgl_fonts_t fonts = {0};
+    panel_lvgl_fonts_t fonts = {0};
     dmx_lvgl_ui_fonts_t ui_fonts;
     lvgl_port_info_t port_info;
     char device_error[256];
@@ -398,12 +398,12 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s\n", device_error);
         goto cleanup;
     }
-    if (!dmx_lvgl_fonts_init(&fonts, device_error, sizeof(device_error))) {
+    if (!panel_lvgl_fonts_init(&fonts, device_error, sizeof(device_error))) {
         fprintf(stderr, "%s\n", device_error);
         goto cleanup;
     }
 
-    ui_fonts = dmx_lvgl_fonts_ui(&fonts);
+    ui_fonts = panel_lvgl_fonts_ui(&fonts);
     memset(&ui_config, 0, sizeof(ui_config));
     ui_config.display = lvgl_port_display(port);
     ui_config.fonts = ui_fonts;
@@ -457,7 +457,7 @@ int main(int argc, char **argv)
 cleanup:
     dmx_controller_destroy(controller);
     dmx_lvgl_ui_destroy(ui);
-    dmx_lvgl_fonts_destroy(&fonts);
+    panel_lvgl_fonts_destroy(&fonts);
     lvgl_port_deinit(port);
     leave_graphics_mode(&console);
     return result;

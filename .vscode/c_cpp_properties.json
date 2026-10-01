@@ -1,0 +1,379 @@
+{
+  "version": 4,
+  "configurations": [
+    {
+      "name": "media",
+      "compilerPath": "${workspaceFolder}/output/profiles/media/host/bin/aarch64-buildroot-linux-gnu-gcc",
+      "intelliSenseMode": "linux-gcc-arm64",
+      "cStandard": "c11",
+      "compileCommands": "${workspaceFolder}/output/dev/media-panel/media/compile_commands.host.json",
+      "includePath": [
+        "${workspaceFolder}/output/dev/kernel/media/headers/include",
+        "${workspaceFolder}/oem/a333/src/media-panel",
+        "${workspaceFolder}/oem/a333/src/dmx-panel/include",
+        "${workspaceFolder}/oem/a333/src/panel-common/include",
+        "${workspaceFolder}/oem/a333/src/panel-common/vendor/lvgl",
+        "${workspaceFolder}/oem/a333/src/panel-common/vendor",
+        "${workspaceFolder}/output/dev/media-panel/media/panel-common/generated"
+      ],
+      "defines": [
+        "_GNU_SOURCE",
+        "LV_CONF_INCLUDE_SIMPLE=1",
+        "LV_DISABLE_API_MAPPING",
+        "PANEL_DISPLAY_ROTATION=90",
+        "MEDIA_PANEL_LOGGING=1"
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/oem/a333/src/media-panel",
+          "${workspaceFolder}/oem/a333/src/dmx-panel/include",
+          "${workspaceFolder}/oem/a333/src/panel-common/include",
+          "${workspaceFolder}/oem/a333/src/panel-common/vendor/lvgl",
+          "${workspaceFolder}/oem/a333/src/panel-common/vendor",
+          "${workspaceFolder}/output/dev/kernel/media/headers/include"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "compilerArgs": [
+        "--sysroot=${workspaceFolder}/output/profiles/media/host/aarch64-buildroot-linux-gnu/sysroot",
+        "-isystem",
+        "${workspaceFolder}/output/dev/kernel/media/headers/include"
+      ]
+    },
+    {
+      "name": "media-kernel-debug-logs",
+      "compilerPath": "${workspaceFolder}/output/profiles/media-kernel-debug-logs/host/bin/aarch64-buildroot-linux-gnu-gcc",
+      "intelliSenseMode": "linux-gcc-arm64",
+      "cStandard": "c11",
+      "compileCommands": "${workspaceFolder}/output/dev/media-panel/media-kernel-debug-logs/compile_commands.host.json",
+      "includePath": [
+        "${workspaceFolder}/output/dev/kernel/media-kernel-debug-logs/headers/include",
+        "${workspaceFolder}/oem/a333/src/media-panel",
+        "${workspaceFolder}/oem/a333/src/dmx-panel/include",
+        "${workspaceFolder}/oem/a333/src/panel-common/include",
+        "${workspaceFolder}/oem/a333/src/panel-common/vendor/lvgl",
+        "${workspaceFolder}/oem/a333/src/panel-common/vendor",
+        "${workspaceFolder}/output/dev/media-panel/media-kernel-debug-logs/panel-common/generated"
+      ],
+      "defines": [
+        "_GNU_SOURCE",
+        "LV_CONF_INCLUDE_SIMPLE=1",
+        "LV_DISABLE_API_MAPPING",
+        "PANEL_DISPLAY_ROTATION=90",
+        "MEDIA_PANEL_LOGGING=1"
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/oem/a333/src/media-panel",
+          "${workspaceFolder}/oem/a333/src/dmx-panel/include",
+          "${workspaceFolder}/oem/a333/src/panel-common/include",
+          "${workspaceFolder}/oem/a333/src/panel-common/vendor/lvgl",
+          "${workspaceFolder}/oem/a333/src/panel-common/vendor",
+          "${workspaceFolder}/output/dev/kernel/media-kernel-debug-logs/headers/include"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "compilerArgs": [
+        "--sysroot=${workspaceFolder}/output/profiles/media-kernel-debug-logs/host/aarch64-buildroot-linux-gnu/sysroot",
+        "-isystem",
+        "${workspaceFolder}/output/dev/kernel/media-kernel-debug-logs/headers/include"
+      ]
+    },
+    {
+      "name": "dmx",
+      "compilerPath": "${workspaceFolder}/output/profiles/dmx/host/bin/aarch64-buildroot-linux-gnu-gcc",
+      "intelliSenseMode": "linux-gcc-arm64",
+      "cStandard": "c11",
+      "includePath": [
+        "${workspaceFolder}/output/dev/kernel/dmx/headers/include",
+        "${workspaceFolder}/oem/a333/src/media-panel",
+        "${workspaceFolder}/oem/a333/src/dmx-panel/include",
+        "${workspaceFolder}/oem/a333/src/panel-common/include",
+        "${workspaceFolder}/oem/a333/src/panel-common/vendor/lvgl",
+        "${workspaceFolder}/oem/a333/src/panel-common/vendor"
+      ],
+      "defines": [
+        "_GNU_SOURCE",
+        "LV_CONF_INCLUDE_SIMPLE=1",
+        "LV_DISABLE_API_MAPPING",
+        "PANEL_DISPLAY_ROTATION=90",
+        "DMX_PANEL_VERSION=\"development\""
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/oem/a333/src/media-panel",
+          "${workspaceFolder}/oem/a333/src/dmx-panel/include",
+          "${workspaceFolder}/oem/a333/src/panel-common/include",
+          "${workspaceFolder}/oem/a333/src/panel-common/vendor/lvgl",
+          "${workspaceFolder}/oem/a333/src/panel-common/vendor",
+          "${workspaceFolder}/output/dev/kernel/dmx/headers/include"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "compilerArgs": [
+        "--sysroot=${workspaceFolder}/output/profiles/dmx/host/aarch64-buildroot-linux-gnu/sysroot",
+        "-isystem",
+        "${workspaceFolder}/output/dev/kernel/dmx/headers/include"
+      ]
+    },
+    {
+      "name": "dmx-kernel-debug-logs",
+      "compilerPath": "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/host/bin/aarch64-buildroot-linux-gnu-gcc",
+      "intelliSenseMode": "linux-gcc-arm64",
+      "cStandard": "c11",
+      "includePath": [
+        "${workspaceFolder}/output/dev/kernel/dmx-kernel-debug-logs/headers/include",
+        "${workspaceFolder}/oem/a333/src/media-panel",
+        "${workspaceFolder}/oem/a333/src/dmx-panel/include",
+        "${workspaceFolder}/oem/a333/src/panel-common/include",
+        "${workspaceFolder}/oem/a333/src/panel-common/vendor/lvgl",
+        "${workspaceFolder}/oem/a333/src/panel-common/vendor"
+      ],
+      "defines": [
+        "_GNU_SOURCE",
+        "LV_CONF_INCLUDE_SIMPLE=1",
+        "LV_DISABLE_API_MAPPING",
+        "PANEL_DISPLAY_ROTATION=90",
+        "DMX_PANEL_VERSION=\"development\""
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/oem/a333/src/media-panel",
+          "${workspaceFolder}/oem/a333/src/dmx-panel/include",
+          "${workspaceFolder}/oem/a333/src/panel-common/include",
+          "${workspaceFolder}/oem/a333/src/panel-common/vendor/lvgl",
+          "${workspaceFolder}/oem/a333/src/panel-common/vendor",
+          "${workspaceFolder}/output/dev/kernel/dmx-kernel-debug-logs/headers/include"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "compilerArgs": [
+        "--sysroot=${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/host/aarch64-buildroot-linux-gnu/sysroot",
+        "-isystem",
+        "${workspaceFolder}/output/dev/kernel/dmx-kernel-debug-logs/headers/include"
+      ]
+    },
+    {
+      "name": "kernel-media",
+      "compilerPath": "${workspaceFolder}/output/profiles/media/host/bin/aarch64-buildroot-linux-gnu-gcc",
+      "compilerArgs": [
+        "-nostdinc"
+      ],
+      "intelliSenseMode": "linux-gcc-arm64",
+      "cStandard": "gnu11",
+      "compileCommands": "${workspaceFolder}/output/dev/kernel/media/compile_commands.host.json",
+      "dotConfig": "${workspaceFolder}/output/profiles/media/build/linux-custom/.config",
+      "defines": [
+        "__KERNEL__"
+      ],
+      "includePath": [
+        "${workspaceFolder}/output/profiles/media/build/linux-custom/arch/arm64/include",
+        "${workspaceFolder}/output/profiles/media/build/linux-custom/arch/arm64/include/generated",
+        "${workspaceFolder}/output/profiles/media/build/linux-custom/include",
+        "${workspaceFolder}/output/profiles/media/build/linux-custom/bsp/include",
+        "${workspaceFolder}/output/profiles/media/build/linux-custom/arch/arm64/include/uapi",
+        "${workspaceFolder}/output/profiles/media/build/linux-custom/arch/arm64/include/generated/uapi",
+        "${workspaceFolder}/output/profiles/media/build/linux-custom/include/uapi",
+        "${workspaceFolder}/output/profiles/media/build/linux-custom/include/generated/uapi"
+      ],
+      "forcedInclude": [
+        "${workspaceFolder}/output/profiles/media/build/linux-custom/include/linux/compiler-version.h",
+        "${workspaceFolder}/output/profiles/media/build/linux-custom/include/linux/kconfig.h",
+        "${workspaceFolder}/output/profiles/media/build/linux-custom/include/linux/compiler_types.h"
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/output/profiles/media/build/linux-custom/include",
+          "${workspaceFolder}/output/profiles/media/build/linux-custom/arch/arm64",
+          "${workspaceFolder}/output/profiles/media/build/linux-custom/bsp"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      }
+    },
+    {
+      "name": "kernel-dmx",
+      "compilerPath": "${workspaceFolder}/output/profiles/dmx/host/bin/aarch64-buildroot-linux-gnu-gcc",
+      "compilerArgs": [
+        "-nostdinc"
+      ],
+      "intelliSenseMode": "linux-gcc-arm64",
+      "cStandard": "gnu11",
+      "compileCommands": "${workspaceFolder}/output/dev/kernel/dmx/compile_commands.host.json",
+      "dotConfig": "${workspaceFolder}/output/profiles/dmx/build/linux-custom/.config",
+      "defines": [
+        "__KERNEL__"
+      ],
+      "includePath": [
+        "${workspaceFolder}/output/profiles/dmx/build/linux-custom/arch/arm64/include",
+        "${workspaceFolder}/output/profiles/dmx/build/linux-custom/arch/arm64/include/generated",
+        "${workspaceFolder}/output/profiles/dmx/build/linux-custom/include",
+        "${workspaceFolder}/output/profiles/dmx/build/linux-custom/bsp/include",
+        "${workspaceFolder}/output/profiles/dmx/build/linux-custom/arch/arm64/include/uapi",
+        "${workspaceFolder}/output/profiles/dmx/build/linux-custom/arch/arm64/include/generated/uapi",
+        "${workspaceFolder}/output/profiles/dmx/build/linux-custom/include/uapi",
+        "${workspaceFolder}/output/profiles/dmx/build/linux-custom/include/generated/uapi"
+      ],
+      "forcedInclude": [
+        "${workspaceFolder}/output/profiles/dmx/build/linux-custom/include/linux/compiler-version.h",
+        "${workspaceFolder}/output/profiles/dmx/build/linux-custom/include/linux/kconfig.h",
+        "${workspaceFolder}/output/profiles/dmx/build/linux-custom/include/linux/compiler_types.h"
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/output/profiles/dmx/build/linux-custom/include",
+          "${workspaceFolder}/output/profiles/dmx/build/linux-custom/arch/arm64",
+          "${workspaceFolder}/output/profiles/dmx/build/linux-custom/bsp"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      }
+    },
+    {
+      "name": "kernel-headless",
+      "compilerPath": "${workspaceFolder}/output/profiles/headless/host/bin/aarch64-buildroot-linux-gnu-gcc",
+      "compilerArgs": [
+        "-nostdinc"
+      ],
+      "intelliSenseMode": "linux-gcc-arm64",
+      "cStandard": "gnu11",
+      "compileCommands": "${workspaceFolder}/output/dev/kernel/headless/compile_commands.host.json",
+      "dotConfig": "${workspaceFolder}/output/profiles/headless/build/linux-custom/.config",
+      "defines": [
+        "__KERNEL__"
+      ],
+      "includePath": [
+        "${workspaceFolder}/output/profiles/headless/build/linux-custom/arch/arm64/include",
+        "${workspaceFolder}/output/profiles/headless/build/linux-custom/arch/arm64/include/generated",
+        "${workspaceFolder}/output/profiles/headless/build/linux-custom/include",
+        "${workspaceFolder}/output/profiles/headless/build/linux-custom/bsp/include",
+        "${workspaceFolder}/output/profiles/headless/build/linux-custom/arch/arm64/include/uapi",
+        "${workspaceFolder}/output/profiles/headless/build/linux-custom/arch/arm64/include/generated/uapi",
+        "${workspaceFolder}/output/profiles/headless/build/linux-custom/include/uapi",
+        "${workspaceFolder}/output/profiles/headless/build/linux-custom/include/generated/uapi"
+      ],
+      "forcedInclude": [
+        "${workspaceFolder}/output/profiles/headless/build/linux-custom/include/linux/compiler-version.h",
+        "${workspaceFolder}/output/profiles/headless/build/linux-custom/include/linux/kconfig.h",
+        "${workspaceFolder}/output/profiles/headless/build/linux-custom/include/linux/compiler_types.h"
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/output/profiles/headless/build/linux-custom/include",
+          "${workspaceFolder}/output/profiles/headless/build/linux-custom/arch/arm64",
+          "${workspaceFolder}/output/profiles/headless/build/linux-custom/bsp"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      }
+    },
+    {
+      "name": "kernel-media-kernel-debug-logs",
+      "compilerPath": "${workspaceFolder}/output/profiles/media-kernel-debug-logs/host/bin/aarch64-buildroot-linux-gnu-gcc",
+      "compilerArgs": [
+        "-nostdinc"
+      ],
+      "intelliSenseMode": "linux-gcc-arm64",
+      "cStandard": "gnu11",
+      "compileCommands": "${workspaceFolder}/output/dev/kernel/media-kernel-debug-logs/compile_commands.host.json",
+      "dotConfig": "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/.config",
+      "defines": [
+        "__KERNEL__"
+      ],
+      "includePath": [
+        "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/arch/arm64/include",
+        "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/arch/arm64/include/generated",
+        "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/include",
+        "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/bsp/include",
+        "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/arch/arm64/include/uapi",
+        "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/arch/arm64/include/generated/uapi",
+        "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/include/uapi",
+        "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/include/generated/uapi"
+      ],
+      "forcedInclude": [
+        "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/include/linux/compiler-version.h",
+        "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/include/linux/kconfig.h",
+        "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/include/linux/compiler_types.h"
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/include",
+          "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/arch/arm64",
+          "${workspaceFolder}/output/profiles/media-kernel-debug-logs/build/linux-custom/bsp"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      }
+    },
+    {
+      "name": "kernel-dmx-kernel-debug-logs",
+      "compilerPath": "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/host/bin/aarch64-buildroot-linux-gnu-gcc",
+      "compilerArgs": [
+        "-nostdinc"
+      ],
+      "intelliSenseMode": "linux-gcc-arm64",
+      "cStandard": "gnu11",
+      "compileCommands": "${workspaceFolder}/output/dev/kernel/dmx-kernel-debug-logs/compile_commands.host.json",
+      "dotConfig": "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/.config",
+      "defines": [
+        "__KERNEL__"
+      ],
+      "includePath": [
+        "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/arch/arm64/include",
+        "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/arch/arm64/include/generated",
+        "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/include",
+        "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/bsp/include",
+        "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/arch/arm64/include/uapi",
+        "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/arch/arm64/include/generated/uapi",
+        "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/include/uapi",
+        "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/include/generated/uapi"
+      ],
+      "forcedInclude": [
+        "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/include/linux/compiler-version.h",
+        "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/include/linux/kconfig.h",
+        "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/include/linux/compiler_types.h"
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/include",
+          "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/arch/arm64",
+          "${workspaceFolder}/output/profiles/dmx-kernel-debug-logs/build/linux-custom/bsp"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      }
+    },
+    {
+      "name": "kernel-headless-kernel-debug-logs",
+      "compilerPath": "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/host/bin/aarch64-buildroot-linux-gnu-gcc",
+      "compilerArgs": [
+        "-nostdinc"
+      ],
+      "intelliSenseMode": "linux-gcc-arm64",
+      "cStandard": "gnu11",
+      "compileCommands": "${workspaceFolder}/output/dev/kernel/headless-kernel-debug-logs/compile_commands.host.json",
+      "dotConfig": "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/.config",
+      "defines": [
+        "__KERNEL__"
+      ],
+      "includePath": [
+        "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/arch/arm64/include",
+        "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/arch/arm64/include/generated",
+        "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/include",
+        "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/bsp/include",
+        "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/arch/arm64/include/uapi",
+        "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/arch/arm64/include/generated/uapi",
+        "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/include/uapi",
+        "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/include/generated/uapi"
+      ],
+      "forcedInclude": [
+        "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/include/linux/compiler-version.h",
+        "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/include/linux/kconfig.h",
+        "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/include/linux/compiler_types.h"
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/include",
+          "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/arch/arm64",
+          "${workspaceFolder}/output/profiles/headless-kernel-debug-logs/build/linux-custom/bsp"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      }
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 # Vendored LVGL
 
 This directory contains the source portion of upstream LVGL **v9.5.0** used
-only by `project/app/dmx_panel`.  The SDK-wide LVGL 8.x component is left
-unchanged so other Luckfox applications keep their existing ABI and config.
+by the shared A333 `panel-common` library linked into `dmx-panel` and
+`media-panel`. Other SDK LVGL components are not used or modified.
 
 - Upstream tag: <https://github.com/lvgl/lvgl/releases/tag/v9.5.0>
 - Source archive: <https://github.com/lvgl/lvgl/archive/refs/tags/v9.5.0.tar.gz>

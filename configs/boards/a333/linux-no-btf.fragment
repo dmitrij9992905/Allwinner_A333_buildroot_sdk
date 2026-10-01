@@ -43,6 +43,21 @@ CONFIG_AW_REGULATOR_AXP2101=y
 # A333 display early power domain
 CONFIG_AW_PCK600_DOMAINS=y
 
+# Built-in /dev/g2d for SDK userspace. A333 uses the vendor RCQ driver
+# (see android15_arm64_defconfig), not G2D_LEGACY or G2D200.
+CONFIG_AW_G2D=y
+CONFIG_G2D_RCQ=y
+CONFIG_G2D_MIXER=y
+CONFIG_G2D_ROTATE=y
+
+# Keep DMA-BUF allocators available without loading modules. These match
+# dragonboard_defconfig; do not change the existing CMA reservation size.
+CONFIG_CMA=y
+CONFIG_DMA_CMA=y
+CONFIG_DMABUF_HEAPS=y
+CONFIG_DMABUF_HEAPS_SYSTEM=y
+CONFIG_DMABUF_HEAPS_CMA=y
+
 # Legacy /dev/fb0 interface required by dmx-panel
 CONFIG_FB=y
 CONFIG_DRM_FBDEV_EMULATION=y

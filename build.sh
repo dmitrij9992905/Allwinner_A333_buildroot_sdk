@@ -35,9 +35,24 @@ A333_RAUC_BUNDLE_NAME=
 PROFILE_ENV=()
 ROOTFS_OVERLAYS=()
 OEM_OVERLAYS=()
+KERNEL_LOGGING=quiet
 # shellcheck source=/dev/null
 source "$profile_file"
 : "${DEFCONFIG:?profile must set DEFCONFIG}"
+case "$KERNEL_LOGGING" in
+    quiet)
+        logging_fragment=../configs/boards/a333/linux-quiet-logs.fragment
+        uboot_env=../configs/boards/a333/helperboard-a333/env-ab.cfg
+        logging_config='# BR2_A333_KERNEL_DEBUG_LOGS is not set'
+        ;;
+    debug)
+        logging_fragment=../configs/boards/a333/linux-kernel-debug-logs.fragment
+        uboot_env=../configs/boards/a333/helperboard-a333/env-ab-kernel-debug-logs.cfg
+        logging_config=BR2_A333_KERNEL_DEBUG_LOGS=y
+        ;;
+    *) echo "Invalid KERNEL_LOGGING in $profile: $KERNEL_LOGGING" >&2; exit 2 ;;
+esac
+kernel_fragments="../configs/boards/a333/linux-no-btf.fragment $logging_fragment"
 OUTPUT_DIR=${OUTPUT_DIR:-"output/profiles/$profile"}
 if [[ ! $DEFCONFIG =~ ^[a-zA-Z0-9_]+_defconfig$ ||
       ! -f $project_dir/configs/configs/$DEFCONFIG ||
@@ -103,9 +118,20 @@ run_make() {
             "BR2_ROOTFS_OVERLAY=$rootfs_overlay_list" "$@"
     fi
 }
-sync_overlay_config() {
+invalidate_package_config() {
+    # Buildroot does not automatically reconfigure packages when fragment
+    # filenames change. Remove only rebuild stamps, preserving sources/cache.
+    local dir="$project_dir/$OUTPUT_DIR/build/$1-custom"
+    [[ -d $dir ]] || return 0
+    rm -f "$dir/.stamp_dotconfig" "$dir/.stamp_configured" "$dir/.stamp_built" \
+        "$dir/.stamp_installed" "$dir/.stamp_target_installed" \
+        "$dir/.stamp_staging_installed" "$dir/.stamp_images_installed" \
+        "$dir/.stamp_host_installed"
+}
+sync_profile_config() {
     local config_file="$project_dir/$OUTPUT_DIR/.config"
     local expected="BR2_ROOTFS_OVERLAY=\"$rootfs_overlay_list\""
+    local changed=0
     [[ -f $config_file ]] || return 0
     if ! grep -Fxq "$expected" "$config_file"; then
         if ! grep -q '^BR2_ROOTFS_OVERLAY=' "$config_file"; then
@@ -113,7 +139,38 @@ sync_overlay_config() {
             exit 1
         fi
         sed -i "s|^BR2_ROOTFS_OVERLAY=.*|$expected|" "$config_file"
-        run_make olddefconfig
+        changed=1
+    fi
+    if ! grep -Fxq "BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES=\"$kernel_fragments\"" "$config_file"; then
+        grep -q '^BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES=' "$config_file" ||
+            printf 'BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES=""\n' >> "$config_file"
+        sed -i "s|^BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES=.*|BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES=\"$kernel_fragments\"|" "$config_file"
+        invalidate_package_config linux
+        # The old ordinary profile used this same env filename with verbose
+        # contents. Rebuild its compiled fallback too during that migration.
+        invalidate_package_config uboot
+        changed=1
+    fi
+    if ! grep -Fxq "BR2_TARGET_UBOOT_DEFAULT_ENV_FILE=\"$uboot_env\"" "$config_file"; then
+        grep -q '^BR2_TARGET_UBOOT_DEFAULT_ENV_FILE=' "$config_file" ||
+            printf 'BR2_TARGET_UBOOT_DEFAULT_ENV_FILE=""\n' >> "$config_file"
+        sed -i "s|^BR2_TARGET_UBOOT_DEFAULT_ENV_FILE=.*|BR2_TARGET_UBOOT_DEFAULT_ENV_FILE=\"$uboot_env\"|" "$config_file"
+        invalidate_package_config uboot
+        changed=1
+    fi
+    if ! grep -Fxq "$logging_config" "$config_file"; then
+        sed -i '/^BR2_A333_KERNEL_DEBUG_LOGS=/d; /^# BR2_A333_KERNEL_DEBUG_LOGS is not set$/d' "$config_file"
+        printf '%s\n' "$logging_config" >> "$config_file"
+        invalidate_package_config linux
+        invalidate_package_config uboot
+        changed=1
+    fi
+    if [[ $changed == 1 ]]; then run_make olddefconfig; fi
+    # Also cover explicit 'configure': it replaces .config before the checks
+    # above, while the old kernel/U-Boot may still have valid build stamps.
+    if [[ $action == configure ]]; then
+        invalidate_package_config linux
+        invalidate_package_config uboot
     fi
 }
 if [[ $action == clean ]]; then
@@ -127,7 +184,7 @@ fi
 if [[ $action == configure || ( $action == build && ! -f $project_dir/$OUTPUT_DIR/.config ) ]]; then
     run_make "$DEFCONFIG"
 fi
-sync_overlay_config
+sync_profile_config
 printf '%s\n' "$overlay_selection" > "$selection_file"
 case "$action" in
     configure) ;;

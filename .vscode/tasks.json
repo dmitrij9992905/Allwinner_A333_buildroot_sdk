@@ -1,0 +1,65 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "SDK kernel: refresh headers and IntelliSense",
+      "type": "process",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/kernel-vscode.sh", "${input:kernelProfile}"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": []
+    },
+    {
+      "label": "media-panel: build",
+      "type": "process",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/media-panel-dev.sh", "build", "${input:profile}"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "group": {"kind": "build", "isDefault": true},
+      "problemMatcher": []
+    },
+    {
+      "label": "media-panel: deploy",
+      "type": "process",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/media-panel-dev.sh", "deploy", "${input:profile}", "${input:target}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "media-panel: run (build + deploy + logs)",
+      "type": "process",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/media-panel-dev.sh", "cycle", "${input:profile}", "${input:target}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "media-panel: production logs",
+      "type": "process",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/media-panel-dev.sh", "logs", "${input:profile}", "${input:target}"],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "kernelProfile",
+      "type": "pickString",
+      "description": "Built kernel profile to index",
+      "options": ["dmx", "media", "headless", "dmx-kernel-debug-logs", "media-kernel-debug-logs", "headless-kernel-debug-logs"],
+      "default": "media"
+    },
+    {
+      "id": "profile",
+      "type": "pickString",
+      "description": "SDK/profile matching the firmware on the board",
+      "options": ["media", "media-kernel-debug-logs"],
+      "default": "media"
+    },
+    {
+      "id": "target",
+      "type": "promptString",
+      "description": "SSH target or ~/.ssh/config alias",
+      "default": "root@192.168.0.144"
+    }
+  ]
+}

@@ -29,6 +29,9 @@ const char *panel_fbdev_path(const panel_fbdev_t *display);
 /*
  * Rotate clockwise by 0/90/180/270 degrees and nearest-neighbour scale the
  * logical canvas to the active framebuffer viewport.
+ * Allwinner G2D is attempted for matching opaque 32-bit 1:1 canvases.
+ * A333_PANEL_RENDERER=auto (default), software, or g2d (strict, diagnostic).
+ * A333_PANEL_PROFILE=1 logs aggregate presentation timings every 5 seconds.
  */
 int panel_fbdev_present(panel_fbdev_t *display,
                         const panel_canvas_t *canvas,

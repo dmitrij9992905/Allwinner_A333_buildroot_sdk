@@ -15,6 +15,16 @@ config BR2_A333_PROFILE_HEADLESS
 
 endchoice
 
+config BR2_A333_KERNEL_DEBUG_LOGS
+	bool "Verbose kernel boot and BSP debug logs"
+	default n
+	help
+	  Selected by the *-kernel-debug-logs defconfigs. Keeps initcall tracing,
+	  early boot console and vendor BSP debug messages. Normal profiles use
+	  the quiet kernel fragment and show warnings/errors on the serial console.
+	  build.sh synchronizes kernel fragments and U-Boot environment with the
+	  selected profile; use a debug profile for verbose diagnostics.
+
 choice
 	prompt "Display orientation"
 	default BR2_A333_DISPLAY_ORIENTATION_LANDSCAPE_CW

@@ -53,7 +53,7 @@ Git**: before the first build, provide
 ./build.sh dmx build
 ```
 
-Replace `dmx` with `media` or `headless` to build another profile. Each has a
+Replace `dmx` with any name from `./build.sh list` to build another profile. Each has a
 separate `output/profiles/<profile>/` directory. `build` automatically runs
 `configure` when that profile has no `.config`, but the explicit step above
 makes the first-build sequence easier to inspect.
@@ -109,10 +109,47 @@ Use a separate `OUTPUT_DIR` for each distinct stack; Buildroot's existing
 rootfs overlay. `./build.sh <profile> configure` synchronizes the selected
 rootfs list into `.config`. A profile can also set
 `PROFILE_ENV=("NAME=value")` for additional container build variables.
-The default directories are `output/profiles/{dmx,media,headless}`.
+Each profile uses `output/profiles/<profile>/` by default.
 The legacy `output/` build can still be used directly with `docker-build.sh`.
 Run `build.sh` on the host; it uses `docker-build.sh` automatically. It can
 also run from `/workspace` inside an interactive `docker-build.sh` session.
+
+### Kernel logging variants
+
+| Normal profile | Verbose diagnostic profile |
+|---|---|
+| `dmx` | `dmx-kernel-debug-logs` |
+| `media` | `media-kernel-debug-logs` |
+| `headless` | `headless-kernel-debug-logs` |
+
+Normal profiles disable the vendor BSP debug-log options and initcall tracing,
+remove `earlyprintk`, `ignore_loglevel` and `keep_bootcon` from kernel boot
+arguments, and use `loglevel=5` (warnings/errors on UART). `printk`/`dmesg`, the
+serial login console and diagnostic interfaces remain available. Debug variants
+preserve the previous verbose bring-up configuration and boot arguments.
+This reduces serial logging overhead, but boot-time improvement must be measured
+on the board; it does not eliminate unrelated probe delays.
+
+```sh
+./build.sh media build                         # normal kernel logging
+./build.sh media-kernel-debug-logs build       # verbose kernel logging
+```
+
+Each variant has its own defconfig, output directory and `.raucb` name. Debug
+profiles inherit their product's rootfs/OEM overlay stacks. `KERNEL_LOGGING=quiet`
+or `debug` in the profile selects the matching kernel fragments and U-Boot env.
+`build.sh` also synchronizes existing `.config` files and invalidates only
+kernel/U-Boot configuration/build stamps when changing the logging selection,
+so an old output directory does not silently retain the previous kernel config.
+
+The quiet/debug pair retains the same product RAUC compatible ID and A/B layout.
+A signed bundle hook updates the logging-related U-Boot variables after all
+three slot images have been written. It leaves slot selection and partition
+mapping alone, allowing OTA transitions without a full flash. The logging
+policy is global U-Boot state, not per-slot state; switching slots manually does
+not restore an earlier logging policy. The complete factory image also packs
+the selected environment. Do not use the new bundles on an unrepaired old
+environment; see the one-time RAUC migration below.
 
 The final post-image step automatically creates `boot.img`, A/B payload
 files, a RAUC bundle, and a complete vendor image using the `dragon` packer
@@ -135,6 +172,225 @@ To change Buildroot settings:
 Downloaded sources and the compiler cache are kept in the project's `dl/` and
 `ccache/` directories. This speeds up subsequent builds and avoids depending
 on the Ubuntu version installed on the host.
+
+## Developing media-panel in VSCode
+
+`oem/a333/src/media-panel/CMakeLists.txt` is the application's CMake project.
+Buildroot uses the same project through `cmake-package`. Both applications
+link the static `panel-common` library in `oem/a333/src/panel-common/`: fbdev/G2D,
+evdev, the LVGL port and font support. The copied LVGL 9.5.0 and Roboto assets
+also live there, with their license notices. DMX keeps its Makefile frontend
+and consumes `panel-common/common.mk`; media uses its CMake target. Neither
+application takes common sources from the other or an external SDK.
+
+```text
+oem/a333/src/
+├── panel-common/  # include/, src/, vendor/lvgl/, assets/fonts/
+├── dmx-panel/     # DMX/RDM controller and DMX-specific UI
+└── media-panel/   # media UI and its CMake project
+```
+
+1. Build the matching `media` or `media-kernel-debug-logs` firmware once to
+   obtain its AArch64/glibc toolchain and sysroot. If these already exist, do
+   not rebuild the firmware merely to develop the UI.
+2. Open the **repository root** in VSCode (`code .`) and install the recommended
+   C/C++ extension. CMake Tools is optional; the provided tasks use Docker and
+   do not require host CMake. Host Python 3 and OpenSSH `ssh`/`scp` are needed.
+3. Press **Ctrl+Shift+B** to build only the application. Choose the matching
+   profile. Its output is `output/dev/media-panel/<profile>/media-panel`.
+4. Use **Terminal → Run Task → media-panel: run (build + deploy + logs)**.
+   Select the profile and SSH target (default `root@192.168.0.144`). The
+   terminal asks for the root password (`allwinner`) unless SSH keys are set up.
+
+The run task builds incrementally, uploads to `/userdata/dev/media-panel/`,
+stops only `a333-media.service` and runs the test UI in the SSH terminal with
+stdout/stderr visible. MPD, Bluetooth and `a333-media-backend.service` stay up.
+**Ctrl+C** exits the test and restores the stock UI if it was active before.
+The script also restores it on a handled SSH disconnect; after an abrupt
+failure you can always run `systemctl start a333-media.service` on the board.
+It does not replace `/oem/usr/bin/media-panel`, modify A/B slots or enable a
+development version on subsequent boots. Test binaries persist in userdata.
+
+The same commands work outside VSCode:
+
+```sh
+./scripts/media-panel-dev.sh build media
+./scripts/media-panel-dev.sh deploy media root@192.168.0.144
+./scripts/media-panel-dev.sh run media root@192.168.0.144
+# Or all three steps, with one profile/target selection:
+./scripts/media-panel-dev.sh cycle media root@192.168.0.144
+# Logs of the installed UI and media backend:
+./scripts/media-panel-dev.sh logs media root@192.168.0.144
+```
+
+SSH aliases/ports/identity files belong in the host's `~/.ssh/config`. Use
+`ssh-copy-id root@192.168.0.144` to avoid repeated password prompts. No password
+is stored in VSCode settings. SCP uses `-O` so a target SFTP server is not needed.
+
+Development builds default to `RelWithDebInfo`, application lifecycle and
+control-command logging, and no GDB requirement. Set `A333_DEV_BUILD_TYPE=Debug`
+or `A333_DEV_LVGL_LOGGING=ON` before opening VSCode or invoking the script if
+needed. CMake options are `MEDIA_PANEL_DISPLAY_ROTATION` (0/90/180/270),
+`MEDIA_PANEL_LOGGING`, `MEDIA_PANEL_LVGL_LOGGING` and `MEDIA_PANEL_G2D` (ON by
+default); the script takes rotation
+from the profile's `.config` (or defconfig). Application diagnostics are
+independent of the kernel-debug-logs firmware variants.
+
+For IntelliSense, select `media` or `media-kernel-debug-logs` through
+**C/C++: Select a Configuration**. CMake generates `compile_commands.json`;
+the script generates a host-path/space-safe `compile_commands.host.json` for
+the checked-in C/C++ configuration, including the shared library sources.
+Run `./scripts/media-panel-dev.sh configure media` to generate this database
+without compiling. Explicit include paths/defines also cover headers and
+DMX files absent from the database; `dmx` and `dmx-kernel-debug-logs` editor
+configurations use their respective profile compilers. The fallback assumes
+90-degree rotation; media compilation-database entries use the actual build
+settings. After changing a profile's rotation, reconfigure and, for DMX,
+adjust the fallback `PANEL_DISPLAY_ROTATION` define to match.
+If stale red underlines remain after the move, run **C/C++: Reset IntelliSense
+Database**, then **Developer: Reload Window**. Install the recommended
+`ms-vscode.cpptools` extension; header files are associated with C, and semantic
+highlighting is enabled. Do not edit application sources in
+`output/profiles/.../build/`: these are disposable Buildroot copies.
+
+Linux headers do not come from the host. The development runner exports ARM64
+UAPI with `headers_install` from the **built kernel of the selected profile**
+to `output/dev/kernel/<profile>/headers/include`. Both development compilation
+and IntelliSense use these headers; libc comes from the target sysroot.
+Kernel-private `include/linux` headers are not mixed into application builds.
+
+To edit the kernel itself, after building it run:
+
+```bash
+bash scripts/kernel-vscode.sh media
+```
+
+Select **C/C++: Select a Configuration → kernel-media** in VSCode.
+Equivalent `kernel-<profile>` configurations exist for all six profiles.
+They use actual Kbuild commands, `.config`, generated ARM64 headers and
+`bsp/include` from `output/profiles/<profile>/build/linux-custom`, with host
+system headers disabled by `-nostdinc`. Refresh after rebuilding/changing the
+kernel, using that command or **SDK kernel: refresh headers and IntelliSense**.
+Disabled drivers may need enabling/building to obtain their exact Kbuild command.
+
+### EEZ-Studio: color and FPS
+
+The applications use **LVGL 9.5.0**, `LV_COLOR_DEPTH=32`, and an
+`LV_COLOR_FORMAT_XRGB8888` display buffer (4 bytes per pixel, 8 bits per RGB
+channel; X is unused). Choose an **LVGL 9.x** project in EEZ-Studio and **32-bit**
+color depth where offered. Use **XRGB8888** for opaque images or **ARGB8888**
+for images with transparency. RGB565 is only used by the existing DMX color
+wheel canvas, not the overall UI. Logical UI resolution is 1280×800 at the
+default 90°/270° rotation, or 800×1280 at 0°/180°. The SDK port rotates the
+physical framebuffer. These are rendering settings, not MIPI
+lane/pixel-format settings.
+
+Both applications now enable LVGL's built-in FPS/CPU monitor at bottom right.
+It counts LVGL refreshes, not physical panel scanout; FPS may be low on a static
+screen. CPU is LVGL handler activity, not whole-system Linux CPU utilization.
+Disable for development with
+`A333_DEV_PERF_MONITOR=OFF ./scripts/media-panel-dev.sh build media`,
+or CMake's `-DMEDIA_PANEL_PERF_MONITOR=OFF`; DMX Make uses `PERF_MONITOR=0`.
+
+For a separately exported SDK, run `./build.sh media build sdk`, extract the
+resulting `*_sdk-buildroot.tar.gz` from `output/profiles/media/images/` elsewhere
+and run its `relocate-sdk.sh`. Then
+`A333_SDK_DIR=/absolute/path/to/extracted-sdk ./scripts/media-panel-dev.sh build media`
+uses native CMake from that SDK instead of Docker. Use a **fresh development
+build directory** when changing between Docker and native SDK paths (for
+example, rename `output/dev/media-panel/media` first); CMake caches absolute
+paths. Set the C/C++ compiler path to the exported SDK's compiler if the
+original profile toolchain is no longer present. Standalone CMake also works:
+
+```sh
+cmake -S oem/a333/src/media-panel -B output/dev/media-panel-native \
+  -DCMAKE_TOOLCHAIN_FILE=/absolute/path/to/sdk/share/buildroot/toolchainfile.cmake \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo -DMEDIA_PANEL_DISPLAY_ROTATION=90
+cmake --build output/dev/media-panel-native --parallel
+```
+
+To ship changes in the normal OEM/RAUC image, run:
+
+```sh
+./build.sh media build media-panel-rebuild
+./build.sh media build
+```
+
+The old Makefile package is automatically resynchronized/reconfigured on the
+first build after the CMake migration. Development build/deploy does **not**
+generate or install a firmware update.
+
+### Allwinner G2D display output (DMX and media)
+
+Both panels share a DMA-BUF-based Allwinner G2D output adapter. LVGL still
+draws widgets in software; the G2D RCQ **rotator** replaces the expensive CPU
+rotation/copy into `/dev/fb0`. It is not the NXP `LV_USE_G2D` renderer, and it
+does not use Mali, Xorg, proprietary user-space libraries or `/dev/mem`.
+
+The common Linux fragment enables `CONFIG_AW_G2D=y`, RCQ and rotation, with
+DMA heaps. The adapter exports the framebuffer once via `FBIOGET_DMABUF`,
+allocates a reusable DMA source, brackets CPU writes with `DMA_BUF_IOCTL_SYNC`,
+and waits for the G2D completion IRQ before reporting the frame as flushed.
+A sequential source copy remains; this is not a zero-copy LVGL renderer.
+
+Runtime controls for either panel:
+
+- `A333_PANEL_RENDERER=auto` (default): use G2D when supported, otherwise log
+  the reason and keep the software display path. A failed hardware path is
+  disabled for that process, avoiding repeated timeouts/log spam.
+- `A333_PANEL_RENDERER=software`: force the previous output for comparison.
+- `A333_PANEL_RENDERER=g2d`: strict diagnostic mode; hardware failure is
+  reported instead of silently falling back. Use `auto` for normal boot.
+- `A333_PANEL_PROFILE=1`: print frame presentation count, G2D frame count,
+  mean/max presentation time every five seconds **when frames are submitted**.
+  This includes the source copy, not LVGL drawing or end-to-end input latency;
+  first-frame initialization can affect the first interval's maximum.
+
+For the VSCode/development runner, corresponding settings are
+`A333_DEV_RENDERER`, `A333_DEV_PANEL_PROFILE`, and build-time `A333_DEV_G2D=ON|OFF`:
+
+```sh
+./scripts/media-panel-dev.sh build media
+./scripts/media-panel-dev.sh deploy media root@192.168.0.144
+A333_DEV_RENDERER=software A333_DEV_PANEL_PROFILE=1 \
+  ./scripts/media-panel-dev.sh run media root@192.168.0.144
+# Exit with Ctrl-C, then compare the same animation using strict hardware output:
+A333_DEV_RENDERER=g2d A333_DEV_PANEL_PROFILE=1 \
+  ./scripts/media-panel-dev.sh run media root@192.168.0.144
+```
+
+The target must run the new kernel (`/dev/g2d` and `/dev/dma_heap/*`). A local
+BSP patch also initializes the optional G2D power-domain list safely. For an
+existing build, clean the kernel package so the new patch is applied:
+
+```sh
+./build.sh media build linux-dirclean
+./build.sh media build media-panel-rebuild
+./build.sh media build
+```
+
+For DMX replace `media` with `dmx` and `media-panel-rebuild` with
+`dmx-panel-rebuild`. Kernel changes require the new boot image in the RAUC
+bundle, not just deployment of the application binary. Headless has no panel
+application and does not open G2D.
+
+RCQ rotation preserves format and does not scale. The adapter currently
+supports opaque ARGB/ABGR 32-bit framebuffers, 8-byte-aligned destination
+stride, and 1:1 geometry after rotation (0/90/180/270). Other layouts use the
+CPU fallback. It writes the existing visible framebuffer; page flipping and
+VSync are **not** added in this first stage, so G2D alone does not guarantee
+tear-free output or 60 FPS. Physical V+/V- sensing and ALSA volume handling
+remain unchanged; only displaying their UI feedback may become quicker.
+
+Supplier Ubuntu inspection (reference only, not a build dependency): in
+`allwinner-a333/source/src/longan/test/dragonboard/baijie_extra`, the XFCE
+overlay's `extra-xfce/etc/X11/xorg.conf` selects DRM `modesetting` with `glamor`.
+The Qt overlay selects `eglfs_mali` and contains a Valhall r32p0 `libmali`.
+This is distinct from G2D, and does not prove runtime GPU acceleration in
+XFCE. These libraries should not be mixed blindly with another Mali kernel
+driver version. The G2D UAPI and rotator in the supplier's Longan BSP match
+our vendored BSP; the small ABI subset is copied into the application, with
+its original Linux-syscall license notice and regression checks.
 
 ## Build artifacts
 

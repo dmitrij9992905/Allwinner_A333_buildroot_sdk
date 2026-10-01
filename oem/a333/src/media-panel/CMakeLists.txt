@@ -1,0 +1,40 @@
+cmake_minimum_required(VERSION 3.16)
+project(media_panel VERSION 1.0.0 LANGUAGES C ASM)
+
+# Buildroot's generated toolchain deliberately defaults Debug CFLAGS to empty.
+if(CMAKE_C_FLAGS_DEBUG STREQUAL "")
+    set(CMAKE_C_FLAGS_DEBUG "-Og -g3" CACHE STRING "Debug CFLAGS" FORCE)
+endif()
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# Older development caches pointed at the DMX application instead of a
+# standalone library. Migrate only that known old default, not custom paths.
+if(MEDIA_PANEL_COMMON_DIR STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}/../dmx-panel")
+    unset(MEDIA_PANEL_COMMON_DIR CACHE)
+    unset(MEDIA_PANEL_COMMON_DIR)
+endif()
+set(MEDIA_PANEL_COMMON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../panel-common" CACHE PATH
+    "Shared A333 display/input/LVGL library")
+set(MEDIA_PANEL_DISPLAY_ROTATION "90" CACHE STRING "Display rotation: 0, 90, 180, 270")
+set_property(CACHE MEDIA_PANEL_DISPLAY_ROTATION PROPERTY STRINGS 0 90 180 270)
+option(MEDIA_PANEL_LOGGING "Application lifecycle/control diagnostics on stderr" ON)
+option(MEDIA_PANEL_LVGL_LOGGING "LVGL warning/error diagnostics" OFF)
+option(MEDIA_PANEL_G2D "Allwinner DMA-BUF G2D output with software fallback" ON)
+option(MEDIA_PANEL_PERF_MONITOR "Show LVGL FPS/CPU overlay" ON)
+if(NOT MEDIA_PANEL_DISPLAY_ROTATION MATCHES "^(0|90|180|270)$")
+    message(FATAL_ERROR "MEDIA_PANEL_DISPLAY_ROTATION must be 0, 90, 180 or 270")
+endif()
+
+set(PANEL_COMMON_DISPLAY_ROTATION "${MEDIA_PANEL_DISPLAY_ROTATION}")
+set(PANEL_COMMON_G2D "${MEDIA_PANEL_G2D}")
+set(PANEL_COMMON_LVGL_LOGGING "${MEDIA_PANEL_LVGL_LOGGING}")
+set(PANEL_COMMON_PERF_MONITOR "${MEDIA_PANEL_PERF_MONITOR}")
+add_subdirectory("${MEDIA_PANEL_COMMON_DIR}" panel-common)
+add_executable(media-panel media_panel.c)
+target_compile_definitions(media-panel PRIVATE
+    MEDIA_PANEL_LOGGING=$<BOOL:${MEDIA_PANEL_LOGGING}>)
+target_compile_options(media-panel PRIVATE -Wall -Wextra)
+target_link_libraries(media-panel PRIVATE panel_common)
+install(TARGETS media-panel RUNTIME DESTINATION bin)

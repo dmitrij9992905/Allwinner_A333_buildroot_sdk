@@ -4,15 +4,25 @@ which can play an 88200 Hz stream at 44100 Hz. Advertise only table rates.
 
 --- a/bsp/drivers/sound/platform/snd_sun65iw1_codec.c
 +++ b/bsp/drivers/sound/platform/snd_sun65iw1_codec.c
-@@ -346,3 +346,4 @@
+@@ -345,8 +345,9 @@
+ 		.stream_name	= "Playback",
+ 		.channels_min	= 1,
+ 		.channels_max	= 2,
 -		.rates		= SNDRV_PCM_RATE_8000_192000
 -				| SNDRV_PCM_RATE_KNOT,
 +		.rates		= SNDRV_PCM_RATE_8000_48000
 +				| SNDRV_PCM_RATE_96000
 +				| SNDRV_PCM_RATE_192000,
  		.formats	= SNDRV_PCM_FMTBIT_S16_LE
-@@ -359,3 +360,2 @@
+ 				| SNDRV_PCM_FMTBIT_S20_LE
+ 				| SNDRV_PCM_FMTBIT_S24_LE
+@@ -357,8 +358,7 @@
+ 		.stream_name	= "Capture",
+ 		.channels_min	= 1,
+ 		.channels_max	= 2,
 -		.rates		= SNDRV_PCM_RATE_8000_48000
 -				| SNDRV_PCM_RATE_KNOT,
 +		.rates		= SNDRV_PCM_RATE_8000_48000,
  		.formats	= SNDRV_PCM_FMTBIT_S16_LE
+ 				| SNDRV_PCM_FMTBIT_S20_LE
+ 				| SNDRV_PCM_FMTBIT_S24_LE

@@ -1,0 +1,17 @@
+The A333 G2D node has no power-domain-names property. With generic PM
+domains enabled, the failed string read leaves the probe's name array
+uninitialized before g2d_attach_pd walks it looking for a NULL sentinel.
+Zero-initialize the entire array so absent names require no attachment
+and a successfully read first name is followed by a NULL terminator.
+
+--- a/bsp/drivers/g2d/g2d_rcq/g2d.c
++++ b/bsp/drivers/g2d/g2d_rcq/g2d.c
+@@ -1414,7 +1414,7 @@
+ static int g2d_probe(struct platform_device *pdev)
+ {
+ #if IS_ENABLED(CONFIG_PM_GENERIC_DOMAINS)
+-	const char *values_of_power_domain_names[PM_ARRAY_SIZE];
++	const char *values_of_power_domain_names[PM_ARRAY_SIZE] = { NULL };
+ #endif
+ 	int ret = 0;
+ 	__g2d_info_t *info = NULL;

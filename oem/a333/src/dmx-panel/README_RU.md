@@ -35,43 +35,39 @@ sub-device и полный набор PID E1.20 пока не реализова
 ## LVGL 9.5 и Roboto
 
 Официальный LVGL v9.5.0 включён изолированно в
-`vendor/lvgl`. Глобальный LVGL из SDK не используется. Источник,
+`../panel-common/vendor/lvgl`. Глобальный LVGL из SDK не используется. Источник,
 SHA-256 скачанного архива и лицензии записаны в
-[`vendor/lvgl/DMX_PANEL_VENDOR.md`](vendor/lvgl/DMX_PANEL_VENDOR.md).
+[`../panel-common/vendor/lvgl/DMX_PANEL_VENDOR.md`](../panel-common/vendor/lvgl/DMX_PANEL_VENDOR.md).
 
 Приложение собрано с настоящим API 9.5 без слоя совместимости со старыми
 именами. Используются software renderer, частичный буфер XRGB8888 и отдельный
 RGB565 canvas для цветового колеса. Goodix и framebuffer обслуживает локальный
-порт приложения, поэтому встроенные SDL/DRM/fbdev/evdev-драйверы LVGL не
+порт общей библиотеки, поэтому встроенные SDL/DRM/fbdev/evdev-драйверы LVGL не
 подключаются.
 
 Все видимые надписи используют **Roboto Regular v2.138**. Исходный TTF
-`assets/fonts/Roboto-Regular.ttf` встраивается в ELF при сборке, а LVGL 9.5
+`../panel-common/assets/fonts/Roboto-Regular.ttf` встраивается в ELF при сборке, а LVGL 9.5
 использует его из памяти через TinyTTF. Внешний файл шрифта на модуле
 не нужен.
 
 Roboto включён на условиях Apache-2.0; лицензия и уведомление об авторских
-правах хранятся рядом с asset в `assets/fonts/LICENSE.txt` и
-`assets/fonts/NOTICE.txt`. SHA-256 TTF:
+правах хранятся рядом с asset в `../panel-common/assets/fonts/LICENSE.txt` и
+`../panel-common/assets/fonts/NOTICE.txt`. SHA-256 TTF:
 `797e35f7f5d6020a5c6ea13b42ecd668bcfb3bbc4baa0e74773527e5b6cb3174`.
 
 ## Исходники
 
 ```text
-project/app/dmx_panel/
-├── include/                 публичные интерфейсы
-├── include/lv_conf.h        локальная конфигурация LVGL 9.5
-├── assets/fonts/            встраиваемый Roboto и его лицензия
-├── vendor/lvgl/             изолированный upstream LVGL v9.5.0
-├── src/main.c               CLI и главный LVGL/controller loop
-├── src/lvgl_ui.c            виджеты Сцена/RDM и цветовое колесо
-├── src/lvgl_port.c          LVGL display/input поверх fbdev/evdev
-├── src/lvgl_fonts.c         Roboto из встроенного TTF через TinyTTF
-├── src/panel_*.c            framebuffer, canvas и touchscreen helpers
-├── src/dmx_controller.c     DMX universe, очередь и RDM-операции
-├── src/dmx_transport.c      UART 250000 8N2, BREAK/MAB и окна ответа
-├── src/rdm_protocol.c       пакеты, checksum и discovery response
-└── tests/                   protocol/controller regression tests
+oem/a333/src/
+├── panel-common/           общая библиотека DMX и media
+│   ├── include/            lv_conf.h, display/input/font API
+│   ├── src/                fbdev/G2D, evdev, LVGL port, canvas, fonts
+│   ├── assets/fonts/       встраиваемый Roboto и лицензии
+│   └── vendor/lvgl/        upstream LVGL v9.5.0
+└── dmx-panel/
+    ├── include/            интерфейсы DMX/UI/RDM
+    ├── src/                main, lvgl_ui, DMX controller/transport, RDM
+    └── tests/              protocol/controller regression tests
 ```
 
 Отдельная инструкция по реально активной заставке находится в
@@ -82,7 +78,8 @@ project/app/dmx_panel/
 В этом проекте приложение собирается как Buildroot-пакет из корня проекта:
 
 ```bash
-./docker-build.sh make BR2_EXTERNAL=../configs O=../output
+./build.sh dmx build dmx-panel-rebuild
+./build.sh dmx build
 ```
 
 Вручную пакет можно пересобрать командой `make dmx-panel-rebuild` с теми же
@@ -92,59 +89,45 @@ OEM-дерево как `oem/a333/rootfs/usr/bin/dmx-panel`.
 
 Каталог `build/` содержит сгенерированные `.d`-зависимости. Если приложение
 переносится в другой путь или контейнер, перед первой сборкой удалите старые
-артефакты командой `make -C project/app/dmx_panel clean`, затем запустите сборку
+артефакты командой `make -C oem/a333/src/dmx-panel BUILDROOT=1 clean`, затем запустите сборку
 заново. Эта цель не требует установленного cross-toolchain. Если используется
 старая копия Makefile, удалите только `build/` вручную и синхронизируйте новый
-Makefile перед следующей сборкой. Сам исходный каталог `vendor/lvgl` переносим
-вместе с приложением.
+Makefile перед следующей сборкой. Каталог `panel-common` переносим как соседний
+каталог приложения.
 
 Собранный ARM-бинарник в Buildroot:
 
 ```text
-output/target/usr/bin/dmx-panel
+output/profiles/dmx/target/usr/bin/dmx-panel
 ```
 
 Перед упаковкой rootfs post-build переносит его в отдельный OEM-образ.
 
-`make test` проверяет RDM protocol/controller и оставленный regression-test
+`make -C oem/a333/src/dmx-panel BUILDROOT=1 test` проверяет RDM protocol/controller и оставленный regression-test
 старого canvas UI. Фактический LVGL 9.5 UI, порт и TinyTTF входят в строгую
 ARM-сборку с `-Werror`; compatibility API LVGL намеренно отключён.
 
 В штатном образе systemd запускает `/oem/usr/bin/dmx-panel` с флагами
 `--simulate --allow-missing-input`, поэтому демо не открывает RS485.
 
-В текущем checkout несколько ранее созданных generated-каталогов (`config`,
-`output`, `project/app/out` и старые результаты `wifi_app`) принадлежат
-`nobody:nogroup`. Поэтому общая `./build.sh app` цепочка останавливается на
-правах доступа, хотя исходники и ARM target полностью собираются. Ничего
-перепрошивать для ручного теста не нужно. При желании проверить стадию copy в
-доступный временный каталог:
-
-```bash
-make -C project/app/dmx_panel RK_APP_OUTPUT=/tmp/dmx-panel-stage
-```
-
-Для восстановления штатной общей сборки следует осознанно вернуть владельца
-generated-каталогов или пересоздать их из той же среды, которая создала их
-первоначально; исходное дерево SDK для этого менять не требуется.
+Настройки VSCode, ARM64/sysroot, Linux UAPI и параметры цвета/FPS
+описаны в [README SDK](../../../../README_RU.md).
 
 ## Перенос по SSH и запуск вручную
 
 На компьютере:
 
 ```bash
-cd /home/dmitrij999/Luckfox/sdk
-make -C project/app/dmx_panel out/bin/dmx-panel
-scp project/app/dmx_panel/out/bin/dmx-panel root@PANEL_IP:/tmp/dmx-panel
+./build.sh dmx build dmx-panel-rebuild
+scp -O output/profiles/dmx/target/usr/bin/dmx-panel root@PANEL_IP:/tmp/dmx-panel
 ```
 
 На A333 через ADB shell, SSH или UART-консоль:
 
 ```sh
-killall t_s 2>/dev/null || true
-killall 86UI_demo 2>/dev/null || true
+systemctl stop dmx-panel
 chmod +x /tmp/dmx-panel
-/oem/usr/bin/dmx-panel --simulate --allow-missing-input
+/tmp/dmx-panel --simulate --allow-missing-input
 ```
 
 Режим `--simulate` не открывает UART. В нём можно проверить экран, касания,
@@ -154,8 +137,7 @@ Discovery, выбор устройства, Identify и смену адреса 
 Запуск с реальной DMX/RDM линией:
 
 ```sh
-killall t_s 2>/dev/null || true
-killall 86UI_demo 2>/dev/null || true
+systemctl stop dmx-panel
 /tmp/dmx-panel \
   --serial /dev/ttyS4 \
   --rs485 auto \
@@ -179,8 +161,7 @@ killall 86UI_demo 2>/dev/null || true
 ```
 
 Файл в `/tmp` исчезнет после перезагрузки. При сборке firmware приложение
-устанавливается в `/oem/usr/bin/dmx-panel`, а init-скрипт `S99lvgl` запускает его
-вместо `t_s`/`86UI_demo`. Версия также доступна в
+устанавливается в `/oem/usr/bin/dmx-panel`, а systemd-юнит `dmx-panel.service` запускает его. Версия также доступна в
 `/oem/usr/share/dmx-panel/VERSION` и командой `/oem/usr/bin/dmx-panel --version`.
 
 Для передачи через одну UART-консоль в rootfs есть ZMODEM `rz/sz`. Например,
@@ -193,7 +174,7 @@ killall 86UI_demo 2>/dev/null || true
 
 ```sh
 killall dmx-panel 2>/dev/null || true
-/etc/init.d/S99lvgl start
+systemctl start dmx-panel
 ```
 
 Штатный UI больше не включён в автозапуск этой конфигурации; команда выше

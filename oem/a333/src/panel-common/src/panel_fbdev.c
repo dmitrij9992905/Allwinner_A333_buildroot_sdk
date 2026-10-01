@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "panel_fbdev.h"
+#include "panel_g2d.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -12,7 +13,12 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <time.h>
 #include <unistd.h>
+
+#ifndef PANEL_ENABLE_G2D
+#define PANEL_ENABLE_G2D 1
+#endif
 
 struct panel_fbdev {
     int fd;
@@ -26,6 +32,10 @@ struct panel_fbdev {
     uint32_t green_table[256];
     uint32_t blue_table[256];
     uint32_t opaque_bits;
+    panel_g2d_t *g2d;
+    int use_g2d, require_g2d, g2d_attempted, g2d_reported;
+    int profile;
+    uint64_t profile_started, frame_count, hardware_count, total_us, max_us;
 };
 
 static void initialize_pixel_tables(panel_fbdev_t *display);
@@ -176,6 +186,25 @@ panel_fbdev_t *panel_fbdev_open(const char *path,
     }
 
     initialize_pixel_tables(display);
+    const char *renderer = getenv("A333_PANEL_RENDERER");
+    if (renderer && strcmp(renderer, "auto") != 0 &&
+        strcmp(renderer, "software") != 0 && strcmp(renderer, "g2d") != 0) {
+        errno = EINVAL;
+        set_error(error_text, error_text_size,
+                  "A333_PANEL_RENDERER must be auto, software or g2d");
+        panel_fbdev_close(display);
+        return NULL;
+    }
+    display->require_g2d = renderer && strcmp(renderer, "g2d") == 0;
+    display->use_g2d = PANEL_ENABLE_G2D && (!renderer || strcmp(renderer, "software") != 0);
+    display->profile = getenv("A333_PANEL_PROFILE") &&
+                       strcmp(getenv("A333_PANEL_PROFILE"), "1") == 0;
+    if (display->require_g2d && !PANEL_ENABLE_G2D) {
+        errno = ENOTSUP;
+        set_error(error_text, error_text_size, "G2D support was disabled at build time");
+        panel_fbdev_close(display);
+        return NULL;
+    }
     (void)ioctl(display->fd, FBIOBLANK, FB_BLANK_UNBLANK);
     if (error_text != NULL && error_text_size != 0)
         error_text[0] = '\0';
@@ -186,6 +215,7 @@ void panel_fbdev_close(panel_fbdev_t *display)
 {
     if (display == NULL)
         return;
+    panel_g2d_close(display->g2d);
     if (display->memory != MAP_FAILED)
         (void)munmap(display->memory, display->memory_size);
     if (display->fd >= 0)
@@ -284,9 +314,9 @@ static size_t scale_coordinate(unsigned int coordinate,
                     (destination_extent - 1u));
 }
 
-int panel_fbdev_present(panel_fbdev_t *display,
-                        const panel_canvas_t *canvas,
-                        unsigned int rotation)
+static int software_present(panel_fbdev_t *display,
+                             const panel_canvas_t *canvas,
+                             unsigned int rotation)
 {
     unsigned int destination_y;
 
@@ -366,4 +396,79 @@ int panel_fbdev_present(panel_fbdev_t *display,
         }
     }
     return 0;
+}
+
+static uint64_t monotonic_us(void)
+{
+    struct timespec now;
+    if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) return 0;
+    return (uint64_t)now.tv_sec * 1000000u + (uint64_t)now.tv_nsec / 1000u;
+}
+
+int panel_fbdev_present(panel_fbdev_t *display,
+                        const panel_canvas_t *canvas,
+                        unsigned int rotation)
+{
+    char reason[192] = "";
+    uint64_t start = 0;
+    int result = -1, hardware = 0;
+    if (!display || !canvas || !canvas->pixels || canvas->width <= 0 ||
+        canvas->height <= 0 || canvas->stride < (size_t)canvas->width ||
+        (rotation != 0 && rotation != 90 && rotation != 180 && rotation != 270)) {
+        errno = EINVAL;
+        return -1;
+    }
+    if (display->profile) start = monotonic_us();
+    if (display->use_g2d) {
+        if (!display->g2d_attempted) {
+            display->g2d_attempted = 1;
+            display->g2d = panel_g2d_open(display->fd, &display->fixed,
+                                          &display->variable, reason, sizeof(reason));
+        }
+        if (display->g2d)
+            result = panel_g2d_present(display->g2d, canvas, rotation, reason, sizeof(reason));
+        if (result == 0) {
+            hardware = 1;
+            if (!display->g2d_reported) {
+                fprintf(stderr, "panel: G2D enabled, synchronous DMA-BUF rotation=%u, %dx%d -> %ux%u\n",
+                        rotation, canvas->width, canvas->height,
+                        display->variable.xres, display->variable.yres);
+                display->g2d_reported = 1;
+            }
+        } else {
+            int saved = errno;
+            fprintf(stderr, "panel: G2D unavailable (%s); %s\n", reason,
+                    display->require_g2d ? "forced G2D output failed" : "using software output");
+            panel_g2d_close(display->g2d);
+            display->g2d = NULL;
+            display->use_g2d = 0; /* No repeated failing ioctls/log spam. */
+            errno = saved;
+        }
+    }
+    if (!hardware && !display->require_g2d)
+        result = software_present(display, canvas, rotation);
+    else if (!hardware && reason[0] == '\0') {
+        /* Keep strict failure meaningful on subsequent frames too. */
+        errno = ENODEV;
+        result = -1;
+    }
+    if (display->profile && result == 0) {
+        uint64_t end = monotonic_us();
+        uint64_t elapsed = end >= start ? end - start : 0;
+        if (!display->profile_started) display->profile_started = start;
+        display->frame_count++;
+        display->hardware_count += (uint64_t)hardware;
+        display->total_us += elapsed;
+        if (elapsed > display->max_us) display->max_us = elapsed;
+        if (end - display->profile_started >= 5000000u) {
+            fprintf(stderr, "panel: present frames=%llu, g2d=%llu, mean=%llu us, max=%llu us (includes source copy)\n",
+                    (unsigned long long)display->frame_count,
+                    (unsigned long long)display->hardware_count,
+                    (unsigned long long)(display->total_us / display->frame_count),
+                    (unsigned long long)display->max_us);
+            display->profile_started = end;
+            display->frame_count = display->hardware_count = display->total_us = display->max_us = 0;
+        }
+    }
+    return result;
 }

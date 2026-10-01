@@ -4,12 +4,18 @@ Otherwise releasing a key can race against a zero-valued release threshold.
 
 --- a/bsp/drivers/gpadc/sunxi_gpadc.c
 +++ b/bsp/drivers/gpadc/sunxi_gpadc.c
-@@ -1352,3 +1352,3 @@
+@@ -1350,7 +1350,7 @@
+ 			config->cmp_lowdata[i] = val;
+ 		}
+ 
 -		if (BIT(i) & config->chd_select) {
 +		if (BIT(i) & (config->chd_select | config->keyadc_select)) {
  			snprintf(name, sizeof(name), "channel%d_compare_higdata", i);
  			if (of_property_read_u32(np, name, &val)) {
-@@ -1668,5 +1668,6 @@
+ 				sunxi_err(chip->dev, "%s:get %s err!\n", __func__, name);
+@@ -1668,8 +1668,9 @@
+ 			}
+ 
  			/* compare high data enable */
 -			if (config->chd_select & BIT(i)) {
 -				sunxi_gpadc_highirq_control(chip->reg_base, i, true);
@@ -18,3 +24,4 @@ Otherwise releasing a key can race against a zero-valued release threshold.
 +							    !!(config->chd_select & BIT(i)));
  				sunxi_gpadc_ch_cmp_high(chip, i, config->cmp_highdata[i]);
  			}
+ 		}

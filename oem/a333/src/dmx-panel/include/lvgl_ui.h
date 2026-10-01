@@ -2,6 +2,7 @@
 #define DMX_PANEL_LVGL_UI_H
 
 #include "panel_ui.h"
+#include "lvgl_fonts.h"
 
 #include <lvgl.h>
 
@@ -15,11 +16,7 @@ extern "C" {
 /* Fonts are supplied by the application as lv_font_t pointers. The target
  * application creates them from its embedded Roboto TTF. */
 
-typedef struct {
-    const lv_font_t *small;
-    const lv_font_t *normal;
-    const lv_font_t *large;
-} dmx_lvgl_ui_fonts_t;
+typedef panel_lvgl_font_set_t dmx_lvgl_ui_fonts_t;
 
 typedef struct {
     /* Parent container/screen. NULL selects lv_screen_active(). */

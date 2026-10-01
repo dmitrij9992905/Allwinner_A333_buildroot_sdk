@@ -45,15 +45,22 @@ mkdir -p "$BUNDLE_DIR"
 cp -f "$BINARIES_DIR/boot.img" "$BUNDLE_DIR/boot.img"
 cp -f "$BINARIES_DIR/rootfs.ext4" "$BUNDLE_DIR/rootfs.ext4"
 cp -f "$BINARIES_DIR/oem.ext4" "$BUNDLE_DIR/oem.ext4"
+KERNEL_LOGGING=quiet
+if grep -q '^BR2_A333_KERNEL_DEBUG_LOGS=y$' "$CONFIG_FILE"; then KERNEL_LOGGING=debug; fi
+sh "$PROJECT_ROOT/scripts/a333-kernel-logging-env.sh" "$KERNEL_LOGGING" > "$BUNDLE_DIR/kernel-logging.env"
+install -m 0755 "$PROJECT_ROOT/scripts/a333-rauc-kernel-logging-hook.sh" "$BUNDLE_DIR/kernel-logging-hook.sh"
 
 cat > "$BUNDLE_DIR/manifest.raucm" <<EOF
 [update]
 compatible=$RAUC_COMPATIBLE
-description=Allwinner A333 Buildroot A/B update
+description=Allwinner A333 Buildroot A/B update ($KERNEL_LOGGING kernel logs)
 version=$VERSION
 
 [bundle]
 format=verity
+
+[hooks]
+filename=kernel-logging-hook.sh
 
 [image.boot]
 filename=boot.img
@@ -63,6 +70,7 @@ filename=rootfs.ext4
 
 [image.oem]
 filename=oem.ext4
+hooks=post-install
 EOF
 
 rm -f "$BINARIES_DIR/$BUNDLE_NAME"

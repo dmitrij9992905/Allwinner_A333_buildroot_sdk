@@ -1,8 +1,8 @@
 /**
- * Local LVGL 9.5 configuration for the Luckfox Pico Panel 86 DMX console.
+ * Shared LVGL 9.5 configuration for the A333 DMX and media panels.
  *
  * It is selected with LV_CONF_INCLUDE_SIMPLE and applies only to the vendored
- * LVGL copy in this application.  The SDK-wide LVGL 8.x component is not used.
+ * LVGL copy in panel-common. The SDK-wide LVGL 8.x component is not used.
  */
 #ifndef LV_CONF_H
 #define LV_CONF_H
@@ -207,13 +207,22 @@
 #define LV_USE_SVG 0
 #define LV_USE_FFMPEG 0
 #define LV_USE_SNAPSHOT 0
-#define LV_USE_SYSMON 0
+/* Built-in overlay measures rendered frames, not physical panel refresh. */
+#ifndef PANEL_LVGL_PERF_MONITOR
+#define PANEL_LVGL_PERF_MONITOR 1
+#endif
+#define LV_USE_SYSMON PANEL_LVGL_PERF_MONITOR
+#define LV_USE_PERF_MONITOR PANEL_LVGL_PERF_MONITOR
+#define LV_USE_PERF_MONITOR_POS LV_ALIGN_BOTTOM_RIGHT
+#define LV_USE_PERF_MONITOR_LOG_MODE 0
+#define LV_USE_MEM_MONITOR 0
+#define LV_SYSMON_PROC_IDLE_AVAILABLE 0
 #define LV_USE_PROFILER 0
 #define LV_USE_MONKEY 0
 #define LV_USE_GRIDNAV 0
 #define LV_USE_FRAGMENT 0
 #define LV_USE_IMGFONT 0
-#define LV_USE_OBSERVER 0
+#define LV_USE_OBSERVER PANEL_LVGL_PERF_MONITOR
 #define LV_USE_IME_PINYIN 0
 #define LV_USE_FILE_EXPLORER 0
 #define LV_USE_FONT_MANAGER 0

@@ -1,0 +1,15 @@
+{
+  "cmake.configureOnOpen": false,
+  "cmake.sourceDirectory": "${workspaceFolder}/oem/a333/src/media-panel",
+  "C_Cpp.intelliSenseEngine": "default",
+  "C_Cpp.errorSquiggles": "enabled",
+  "C_Cpp.enhancedColorization": "enabled",
+  "files.associations": {
+    "*.h": "c"
+  },
+  "files.watcherExclude": {
+    "**/output/**": true,
+    "**/dl/**": true,
+    "**/ccache/**": true
+  }
+}

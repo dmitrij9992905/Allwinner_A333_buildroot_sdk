@@ -8,14 +8,14 @@
 #include <string.h>
 
 #if LVGL_VERSION_MAJOR != 9 || LVGL_VERSION_MINOR != 5
-#error "dmx_panel requires LVGL 9.5.x"
+#error "panel-common requires LVGL 9.5.x"
 #endif
 
 enum {
-    DMX_FONT_SMALL_SIZE = 16,
-    DMX_FONT_NORMAL_SIZE = 20,
-    DMX_FONT_LARGE_SIZE = 28,
-    DMX_FONT_CACHE_GLYPHS = 64
+    PANEL_FONT_SMALL_SIZE = 16,
+    PANEL_FONT_NORMAL_SIZE = 20,
+    PANEL_FONT_LARGE_SIZE = 28,
+    PANEL_FONT_CACHE_GLYPHS = 64
 };
 
 static void set_error(char *buffer, size_t size, const char *format, ...)
@@ -31,15 +31,15 @@ static void set_error(char *buffer, size_t size, const char *format, ...)
 
 static bool create_font(uint16_t size, lv_font_t **font)
 {
-    *font = lv_tiny_ttf_create_data_ex(dmx_roboto_regular_ttf,
-                                       dmx_roboto_regular_ttf_size(),
+    *font = lv_tiny_ttf_create_data_ex(panel_roboto_regular_ttf,
+                                       panel_roboto_regular_ttf_size(),
                                        size,
                                        LV_FONT_KERNING_NORMAL,
-                                       DMX_FONT_CACHE_GLYPHS);
+                                       PANEL_FONT_CACHE_GLYPHS);
     return *font != NULL;
 }
 
-bool dmx_lvgl_fonts_init(dmx_lvgl_fonts_t *fonts,
+bool panel_lvgl_fonts_init(panel_lvgl_fonts_t *fonts,
                          char *error,
                          size_t error_size)
 {
@@ -49,17 +49,17 @@ bool dmx_lvgl_fonts_init(dmx_lvgl_fonts_t *fonts,
     }
     memset(fonts, 0, sizeof(*fonts));
 
-    if (dmx_roboto_regular_ttf_size() == 0u) {
+    if (panel_roboto_regular_ttf_size() == 0u) {
         set_error(error, error_size, "embedded Roboto font is empty");
         return false;
     }
 
-    if (!create_font(DMX_FONT_SMALL_SIZE, &fonts->small) ||
-        !create_font(DMX_FONT_NORMAL_SIZE, &fonts->normal) ||
-        !create_font(DMX_FONT_LARGE_SIZE, &fonts->large)) {
+    if (!create_font(PANEL_FONT_SMALL_SIZE, &fonts->small) ||
+        !create_font(PANEL_FONT_NORMAL_SIZE, &fonts->normal) ||
+        !create_font(PANEL_FONT_LARGE_SIZE, &fonts->large)) {
         set_error(error, error_size,
                   "cannot create LVGL fonts from embedded Roboto");
-        dmx_lvgl_fonts_destroy(fonts);
+        panel_lvgl_fonts_destroy(fonts);
         return false;
     }
     if (error != NULL && error_size != 0)
@@ -67,9 +67,9 @@ bool dmx_lvgl_fonts_init(dmx_lvgl_fonts_t *fonts,
     return true;
 }
 
-dmx_lvgl_ui_fonts_t dmx_lvgl_fonts_ui(const dmx_lvgl_fonts_t *fonts)
+panel_lvgl_font_set_t panel_lvgl_fonts_ui(const panel_lvgl_fonts_t *fonts)
 {
-    dmx_lvgl_ui_fonts_t result = {0};
+    panel_lvgl_font_set_t result = {0};
 
     if (fonts != NULL) {
         result.small = fonts->small;
@@ -79,7 +79,7 @@ dmx_lvgl_ui_fonts_t dmx_lvgl_fonts_ui(const dmx_lvgl_fonts_t *fonts)
     return result;
 }
 
-void dmx_lvgl_fonts_destroy(dmx_lvgl_fonts_t *fonts)
+void panel_lvgl_fonts_destroy(panel_lvgl_fonts_t *fonts)
 {
     if (fonts == NULL)
         return;
