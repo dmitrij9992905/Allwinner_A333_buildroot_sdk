@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+# Initialize once per boot, not on every backend restart. --force restores
+# a known audible route after manual mixer experiments, at moderate gain.
+case "${1:-}" in
+    '') [ ! -e /run/a333-audio-initialized ] || exit 0 ;;
+    --force) ;;
+    *) echo 'Usage: a333-audio-init [--force]' >&2; exit 2 ;;
+esac
+amixer -q -c 0 cset 'name=DAC Volume' 63
+amixer -q -c 0 cset 'name=DACL Volume' 143
+amixer -q -c 0 cset 'name=DACR Volume' 143
+amixer -q -c 0 set 'LINEOUT Gain' 31
+amixer -q -c 0 set 'HPOUT Gain' 5
+amixer -q -c 0 set 'DACL DACR Swap' Off
+amixer -q -c 0 set 'AD2DA Loop Mode' Off
+amixer -q -c 0 set 'DA2AD Loop Mode' Off
+amixer -q -c 0 set LINEOUTL on
+amixer -q -c 0 set LINEOUTR on
+amixer -q -c 0 set HPOUT on
+amixer -q -c 0 set SPK on
+touch /run/a333-audio-initialized

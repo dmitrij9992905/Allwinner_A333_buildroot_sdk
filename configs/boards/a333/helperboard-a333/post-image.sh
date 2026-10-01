@@ -3,8 +3,24 @@ set -eu
 
 BINARIES_DIR="$1"
 PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)"
-OEM_ROOT="${A333_OEM_ROOT:-$PROJECT_ROOT/oem/a333/rootfs}"
+OUTPUT_DIR="$(CDPATH= cd -- "$(dirname -- "$BINARIES_DIR")" && pwd)"
+CONFIG_FILE="${BR2_CONFIG:-$OUTPUT_DIR/.config}"
+OEM_ROOT="${A333_OEM_ROOT:-$OUTPUT_DIR/build/a333-oem-root}"
 OEM_SIZE="${A333_OEM_SIZE:-512M}"
+
+if grep -q '^BR2_A333_PROFILE_HEADLESS=y$' "$CONFIG_FILE"; then
+	DTC="${HOST_DIR:-$OUTPUT_DIR/host}/bin/dtc"
+	FDTOVERLAY="${HOST_DIR:-$OUTPUT_DIR/host}/bin/fdtoverlay"
+	[ -x "$DTC" ] || DTC=dtc
+	[ -x "$FDTOVERLAY" ] || FDTOVERLAY=fdtoverlay
+	"$DTC" -@ -I dts -O dtb \
+		-o "$BINARIES_DIR/board-headless.dtbo" \
+		"$PROJECT_ROOT/configs/boards/a333/headless/board-headless.dtso"
+	"$FDTOVERLAY" -i "$BINARIES_DIR/board.dtb" \
+		-o "$BINARIES_DIR/board-headless.dtb" \
+		"$BINARIES_DIR/board-headless.dtbo"
+	cp -f "$BINARIES_DIR/board-headless.dtb" "$BINARIES_DIR/board.dtb"
+fi
 
 copy_slot_image()
 {
@@ -37,6 +53,6 @@ if [ -f "$BINARIES_DIR/Image" ]; then
 	cp -f "$BINARIES_DIR/Image" "$BINARIES_DIR/Image.B"
 fi
 
-"$PROJECT_ROOT/scripts/make-a333-rauc-bundle.sh" "$BINARIES_DIR"
 "$PROJECT_ROOT/scripts/make-a333-bootimg.sh" "$BINARIES_DIR"
+"$PROJECT_ROOT/scripts/make-a333-rauc-bundle.sh" "$BINARIES_DIR"
 "$PROJECT_ROOT/scripts/pack-a333-image.sh" "$BINARIES_DIR"

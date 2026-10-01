@@ -1,0 +1,6 @@
+config BR2_PACKAGE_MEDIA_PANEL
+	bool "media-panel"
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	help
+	  Touch UI for the A333 media profile, using the project's copied
+	  LVGL framebuffer/evdev port.

@@ -1894,10 +1894,8 @@
 
 &rfkill {
 	compatible = "allwinner,sunxi-rfkill";
-	chip_en;
-	power_en;
-	pinctrl-0;
-	pinctrl-names;
+	/* This module has a separate Wi-Fi rail enable; chip enable is WL-REG-ON. */
+	power_en = <&r_pio PL 7 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 
 	/* wlan session */
@@ -1972,7 +1970,8 @@
 	channel1_compare_lowdata=<1700000>;
 	channel1_compare_higdata=<1200000>;
 	channel2_compare_lowdata=<1700000>;
-	channel2_compare_higdata=<1200000>;
+	/* Release must be above both keys (1.03V / 1.34V), below idle (1.8V). */
+	channel2_compare_higdata=<1700000>;
     status = "okay";
 	wakeup-source;
     //支持多个adc通道作按键，按键配置方式如下：

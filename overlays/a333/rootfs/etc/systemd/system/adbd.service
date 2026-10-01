@@ -1,7 +1,8 @@
 [Unit]
 Description=Android Debug Bridge daemon
-After=network.target systemd-udev-settle.service
-Wants=network.target
+After=systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -10,7 +11,7 @@ ExecStart=/usr/bin/adbd
 ExecStartPost=/usr/sbin/a333-usb-gadget bind
 ExecStopPost=/usr/sbin/a333-usb-gadget stop
 Restart=always
-RestartSec=1
+RestartSec=5
 StandardOutput=journal
 StandardError=journal
 

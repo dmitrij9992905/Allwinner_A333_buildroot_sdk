@@ -1,0 +1,301 @@
+#!/usr/bin/env python3
+"""Bridge BlueZ AVRCP metadata and MPD controls to the local touch panel."""
+
+import asyncio
+import logging
+import os
+import re
+import socket
+import struct
+import subprocess
+import time
+from pathlib import Path
+
+from dbus_next import BusType, Message, MessageType, Variant
+from dbus_next.aio import MessageBus
+
+RUN = Path("/run/a333-media")
+SOCKET = RUN / "control.sock"
+RADIO = Path("/userdata/media/radio.m3u")
+MEDIA_PAIRING_MARKER = Path("/run/a333-media-pairing-enabled")
+VOLUME_KEYS = Path("/dev/input/by-path/platform-2820000.gpadc0-event")
+INPUT_EVENT = struct.Struct("llHHi")
+KEY_VOLUMEUP = 115
+KEY_VOLUMEDOWN = 114
+# 159 is 0 dB on this codec; register 255 is +72 dB, not 100% volume.
+CODEC_VOLUME_MAX = 159
+# The full register range spans 119 dB. Use a useful -60..0 dB scale,
+# in 3 dB steps, with a separate true mute at zero.
+CODEC_VOLUME_FLOOR = 79
+CODEC_VOLUME_STEP = 4
+
+
+def run_mpc_sync(*args, timeout=3):
+    try:
+        result = subprocess.run(["/usr/bin/mpc", *args], check=False,
+                                capture_output=True, text=True, timeout=timeout)
+        if result.returncode:
+            logging.warning("mpc %s: %s", " ".join(args), result.stderr.strip())
+            return None
+        return result.stdout.strip()
+    except (OSError, subprocess.TimeoutExpired) as error:
+        logging.warning("mpc %s: %s", " ".join(args), error)
+        return None
+
+
+async def run_mpc(*args, timeout=3):
+    return await asyncio.to_thread(run_mpc_sync, *args, timeout=timeout)
+
+
+def adjust_codec_volume(direction):
+    """Change the codec DAC gain shared by MPD and Bluetooth audio."""
+    levels = []
+    for channel in ("DACL Volume", "DACR Volume"):
+        try:
+            result = subprocess.run(["/usr/bin/amixer", "-c", "0", "cget",
+                                     "name=" + channel], check=True,
+                                    capture_output=True, text=True, timeout=3)
+            bounds = re.search(r"min=(-?\d+),max=(-?\d+)", result.stdout)
+            values = re.findall(r"(?:;\s*|:\s*)values=(-?\d+)",
+                                result.stdout)
+            if not bounds or not values:
+                raise ValueError("cannot parse mixer control " + channel)
+            minimum, maximum = map(int, bounds.groups())
+            maximum = min(maximum, CODEC_VOLUME_MAX)
+            current = int(values[-1])
+            levels.append((channel, current, minimum, maximum))
+        except (OSError, ValueError, subprocess.CalledProcessError,
+                subprocess.TimeoutExpired) as error:
+            logging.warning("codec volume unavailable: %s", error)
+            return None
+    # Keep left/right gain equal even if a manual mixer change unbalanced them.
+    minimum = max(item[2] for item in levels)
+    maximum = min(item[3] for item in levels)
+    current = max(minimum, min(maximum, round(sum(item[1] for item in levels) / 2)))
+    floor = max(minimum, min(maximum, CODEC_VOLUME_FLOOR))
+    if direction > 0:
+        target = min(maximum, max(floor, current + CODEC_VOLUME_STEP))
+    elif current <= floor:
+        target = minimum
+    else:
+        target = max(floor, current - CODEC_VOLUME_STEP)
+    for channel, _, _, _ in levels:
+        try:
+            subprocess.run(["/usr/bin/amixer", "-c", "0", "cset",
+                            "name=" + channel, str(target)], check=True,
+                           capture_output=True, text=True, timeout=3)
+        except (OSError, subprocess.CalledProcessError,
+                subprocess.TimeoutExpired) as error:
+            logging.warning("cannot set %s: %s", channel, error)
+            return None
+    if target == minimum:
+        return 0
+    return max(1, round(100 * (target - floor) / max(1, maximum - floor)))
+
+
+async def volume_keys(current):
+    while True:
+        try:
+            with VOLUME_KEYS.open("rb", buffering=0) as device:
+                logging.info("volume keys: %s", VOLUME_KEYS)
+                while True:
+                    raw = await asyncio.to_thread(device.read, INPUT_EVENT.size)
+                    if len(raw) != INPUT_EVENT.size:
+                        break
+                    _, _, event_type, code, value = INPUT_EVENT.unpack(raw)
+                    if event_type != 1 or value not in (1, 2):
+                        continue
+                    direction = {KEY_VOLUMEUP: 1, KEY_VOLUMEDOWN: -1}.get(code)
+                    if direction is None:
+                        continue
+                    # Linux emits repeat events every 40ms. Avoid a backlog of
+                    # slow mixer commands and stale keypresses after release.
+                    now = time.monotonic()
+                    if value == 2 and now < current.get("volume_repeat_after", 0):
+                        continue
+                    current["volume_repeat_after"] = now + 0.15
+                    level = await asyncio.to_thread(adjust_codec_volume, direction)
+                    if level is not None:
+                        current["volume_osd"] = "Volume: %d%%" % level
+                        current["volume_osd_until"] = time.monotonic() + 5
+                        current["volume_seq"] = current.get("volume_seq", 0) + 1
+        except (OSError, ValueError) as error:
+            logging.warning("volume key input unavailable: %s", error)
+        await asyncio.sleep(3)
+
+
+def show_notice(current, message, seconds=8):
+    current["notice"] = message
+    current["notice_until"] = time.monotonic() + seconds
+
+
+def clean(value):
+    return " ".join(str(value).split())[:240]
+
+
+async def bt_track(bus):
+    reply = await bus.call(Message(destination="org.bluez", path="/",
+        interface="org.freedesktop.DBus.ObjectManager", member="GetManagedObjects"))
+    if reply.message_type != MessageType.METHOD_RETURN:
+        return None
+    players = []
+    for path, interfaces in reply.body[0].items():
+        player = interfaces.get("org.bluez.MediaPlayer1")
+        if player:
+            players.append((path, player))
+    if not players:
+        return None
+    path, player = next((item for item in players
+        if item[1].get("Status") and item[1]["Status"].value == "playing"), players[0])
+    track = player.get("Track")
+    fields = track.value if track else {}
+    metadata = {name: fields.get(name).value if fields.get(name) else ""
+                for name in ("Title", "Artist", "Album")}
+    return path, player.get("Status").value if player.get("Status") else "", metadata
+
+
+async def update_status(bus, current):
+    try:
+        bluetooth = await bt_track(bus)
+    except Exception as error:
+        logging.warning("Bluetooth status unavailable: %s", error)
+        bluetooth = None
+    mpd_status = await run_mpc("status") or ""
+    mpd_playing = "[playing]" in mpd_status
+    if bluetooth and (bluetooth[1] == "playing" or
+                      (bluetooth[2]["Title"] and not mpd_playing)):
+        if mpd_playing:
+            await run_mpc("pause")
+        metadata = bluetooth[2]
+        current["source"] = "Bluetooth"
+        current["player"] = bluetooth[0]
+        current["bt_status"] = bluetooth[1]
+        lines = ["Bluetooth", metadata["Title"] or "Bluetooth audio",
+                 metadata["Artist"], metadata["Album"]]
+    else:
+        current["source"] = "MPD"
+        current["player"] = None
+        current["bt_status"] = ""
+        detail = await run_mpc("--format", "%title%\n%artist%\n%album%", "current") or ""
+        fields = detail.splitlines()
+        lines = [current.get("mode", "Music / radio"), fields[0] if fields else "Ready",
+                 fields[1] if len(fields) > 1 else "",
+                 fields[2] if len(fields) > 2 else ""]
+    if time.monotonic() < current.get("notice_until", 0):
+        lines[0] = current["notice"]
+    volume_osd = current.get("volume_osd", "")
+    if time.monotonic() >= current.get("volume_osd_until", 0):
+        volume_osd = ""
+    lines.extend((volume_osd, str(current.get("volume_seq", 0))))
+    temporary = RUN / "status.new"
+    temporary.write_text("\n".join(map(clean, lines)) + "\n", encoding="utf-8")
+    os.replace(temporary, RUN / "status")
+
+
+async def bt_command(bus, player, command, status):
+    member = {"previous": "Previous", "next": "Next",
+              "toggle": "Pause" if status == "playing" else "Play"}.get(command)
+    if not member:
+        return False
+    reply = await bus.call(Message(destination="org.bluez", path=player,
+        interface="org.bluez.MediaPlayer1", member=member))
+    return reply.message_type == MessageType.METHOD_RETURN
+
+
+async def handle(bus, current, command):
+    if command == "pair":
+        adapter = "/org/bluez/hci0"
+        try:
+            for prop in ("Powered", "Pairable", "Discoverable"):
+                reply = await bus.call(Message(destination="org.bluez", path=adapter,
+                    interface="org.freedesktop.DBus.Properties", member="Set",
+                    signature="ssv", body=["org.bluez.Adapter1", prop, Variant("b", True)]))
+                if reply.message_type != MessageType.METHOD_RETURN:
+                    logging.warning("Cannot enable Bluetooth %s: %s", prop, reply.body)
+                    show_notice(current, "Bluetooth unavailable: check hci0")
+                    return
+        except Exception as error:
+            logging.warning("Cannot open Bluetooth pairing: %s", error)
+            show_notice(current, "Bluetooth unavailable: check hci0")
+            return
+        MEDIA_PAIRING_MARKER.touch()
+        show_notice(current, "Pairing open for 2 minutes", 120)
+        return
+    if command == "radio":
+        if RADIO.exists():
+            for line in RADIO.read_text(encoding="utf-8").splitlines():
+                url = line.strip()
+                if url.startswith(("http://", "https://")):
+                    await run_mpc("clear")
+                    await run_mpc("add", url)
+                    await run_mpc("play")
+                    current["mode"] = "Internet radio"
+                    return
+        logging.warning("No radio URL in %s", RADIO)
+        show_notice(current, "No radio URL in /userdata/media/radio.m3u")
+        return
+    if command == "music":
+        # MPD's database and its play queue are separate. An empty queue is
+        # not populated by 'play', even when music_directory has files.
+        if await run_mpc("update", "--wait", timeout=60) is None:
+            show_notice(current, "MPD update failed; see journal")
+            return
+        if await run_mpc("clear") is None:
+            show_notice(current, "Could not clear MPD queue")
+            return
+        if await run_mpc("add", "/", timeout=30) is None:
+            show_notice(current, "Could not queue music; see journal")
+            return
+        queue_length = await run_mpc("status", "%length%")
+        if not queue_length or queue_length == "0":
+            show_notice(current, "No supported music in /userdata/media/music")
+            return
+        if await run_mpc("play") is None:
+            show_notice(current, "MPD cannot play; check audio and journal")
+            return
+        current["mode"] = "Local music"
+        return
+    if command not in ("previous", "next", "toggle"):
+        return
+    if current["source"] == "Bluetooth" and current["player"]:
+        if await bt_command(bus, current["player"], command, current["bt_status"]):
+            return
+    await run_mpc({"previous": "prev", "next": "next",
+                   "toggle": "toggle"}[command])
+
+
+async def main():
+    logging.basicConfig(level=logging.INFO)
+    RUN.mkdir(mode=0o755, exist_ok=True)
+    try:
+        SOCKET.unlink()
+    except FileNotFoundError:
+        pass
+    control = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    control.bind(str(SOCKET))
+    control.setblocking(False)
+    bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+    current = {"source": "MPD", "player": None, "bt_status": "",
+               "mode": "Music / radio", "volume_seq": 0}
+    loop = asyncio.get_running_loop()
+
+    async def poll():
+        while True:
+            try:
+                await update_status(bus, current)
+            except Exception:
+                logging.exception("media status update failed")
+            await asyncio.sleep(1)
+
+    asyncio.create_task(poll())
+    asyncio.create_task(volume_keys(current))
+    while True:
+        message = await loop.sock_recv(control, 32)
+        try:
+            await handle(bus, current, message.decode("ascii"))
+        except Exception:
+            logging.exception("media control failed")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

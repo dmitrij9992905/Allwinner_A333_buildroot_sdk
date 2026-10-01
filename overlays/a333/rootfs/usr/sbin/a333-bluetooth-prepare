@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+
+# The AIC Bluetooth patch is downloaded over SDIO, not by btattach. Both
+# rfkill devices must be unblocked: sunxi-bt controls reset/rails while the
+# AIC bluetooth device requests firmware from the shared BSP.
+modprobe aic8800_bsp
+modprobe aic8800_fdrv
+modprobe aic8800_btlpm
+rfkill unblock bluetooth
+
+attempt=0
+while [ "$attempt" -lt 50 ]; do
+    if [ -c /dev/ttyS1 ] && [ -d /sys/bus/sdio/devices ] &&
+       find /sys/bus/sdio/devices -mindepth 1 -maxdepth 1 -type l | grep -q .; then
+        exit 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 0.1
+done
+echo 'AIC Bluetooth: SDIO firmware transport or UART1 is unavailable' >&2
+exit 1

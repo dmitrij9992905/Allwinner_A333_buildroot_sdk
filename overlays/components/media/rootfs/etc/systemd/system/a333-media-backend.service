@@ -1,0 +1,14 @@
+[Unit]
+Description=A333 media metadata and control bridge
+After=a333-oem-mount.service mpd.service bluetooth.service
+Requires=a333-oem-mount.service
+
+[Service]
+Type=simple
+ExecStartPre=/usr/sbin/a333-audio-init
+ExecStart=/oem/usr/libexec/a333-media-backend
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

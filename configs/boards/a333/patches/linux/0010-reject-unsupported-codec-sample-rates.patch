@@ -1,0 +1,18 @@
+The A333 codec table has no entries for 88200, 176400 or arbitrary rates.
+Advertising those rates leaves DAC_FS unchanged while ALSA reports success,
+which can play an 88200 Hz stream at 44100 Hz. Advertise only table rates.
+
+--- a/bsp/drivers/sound/platform/snd_sun65iw1_codec.c
++++ b/bsp/drivers/sound/platform/snd_sun65iw1_codec.c
+@@ -346,3 +346,4 @@
+-		.rates		= SNDRV_PCM_RATE_8000_192000
+-				| SNDRV_PCM_RATE_KNOT,
++		.rates		= SNDRV_PCM_RATE_8000_48000
++				| SNDRV_PCM_RATE_96000
++				| SNDRV_PCM_RATE_192000,
+ 		.formats	= SNDRV_PCM_FMTBIT_S16_LE
+@@ -359,3 +360,2 @@
+-		.rates		= SNDRV_PCM_RATE_8000_48000
+-				| SNDRV_PCM_RATE_KNOT,
++		.rates		= SNDRV_PCM_RATE_8000_48000,
+ 		.formats	= SNDRV_PCM_FMTBIT_S16_LE

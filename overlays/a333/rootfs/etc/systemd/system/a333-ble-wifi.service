@@ -1,0 +1,14 @@
+[Unit]
+Description=A333 BLE Wi-Fi provisioning GATT service
+After=bluetooth.service NetworkManager.service
+Requires=bluetooth.service
+Wants=NetworkManager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/a333-ble-wifi
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

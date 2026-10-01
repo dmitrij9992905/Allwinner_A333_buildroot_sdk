@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in
+    on)
+        touch /run/a333-ble-pairing-enabled
+        bluetoothctl pairable on
+        ;;
+    off)
+        rm -f /run/a333-ble-pairing-enabled
+        bluetoothctl pairable off
+        ;;
+    *)
+        echo "Usage: a333-ble-pairing {on|off}" >&2
+        exit 2
+        ;;
+esac

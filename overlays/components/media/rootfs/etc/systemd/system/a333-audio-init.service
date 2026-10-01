@@ -1,0 +1,12 @@
+[Unit]
+Description=Initialize A333 analog playback route and safe gains
+After=sound.target
+Before=mpd.service bluealsa-playback.service a333-media-backend.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/a333-audio-init
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

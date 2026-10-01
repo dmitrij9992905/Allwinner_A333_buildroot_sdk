@@ -1,0 +1,14 @@
+/dts-v1/;
+/plugin/;
+
+/* Applied to the stock board.dtb only for the headless product profile. */
+&{/panel_0@0} { status = "disabled"; };
+&{/backlight0} { status = "disabled"; };
+&{/soc@3000000/sunxi-drm} { status = "disabled"; };
+&{/soc@3000000/de@5000000} { status = "disabled"; };
+&{/soc@3000000/vo0@5a00000} { status = "disabled"; };
+&{/soc@3000000/vo1@5c00000} { status = "disabled"; };
+&{/soc@3000000/phy@5a11000} { status = "disabled"; };
+&{/soc@3000000/dsi0@5a10000} { status = "disabled"; };
+&{/soc@3000000/lvds0@1000} { status = "disabled"; };
+&{/soc@3000000/s_twi2@710a000/ctp} { status = "disabled"; };

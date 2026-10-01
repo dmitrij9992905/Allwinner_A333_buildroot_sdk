@@ -1,0 +1,13 @@
+[Unit]
+Description=Play incoming Bluetooth audio through ALSA
+After=bluealsad.service a333-audio-init.service sound.target
+Requires=bluealsad.service a333-audio-init.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bluealsa-aplay -D default
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

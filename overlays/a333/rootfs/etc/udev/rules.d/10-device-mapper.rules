@@ -1,0 +1,2 @@
+# libdevmapper and RAUC expect the device-mapper ioctl node here.
+KERNEL=="device-mapper", NAME="mapper/control", MODE="0600"

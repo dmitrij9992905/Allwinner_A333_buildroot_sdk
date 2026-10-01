@@ -1,0 +1,11 @@
+The vendor GPADC has no input open/close callbacks. Runtime suspend stops
+sampling even while evdev is open, so volume keys stop working after five
+seconds. Keep the probe PM reference for key channels; remove drops it.
+
+--- a/bsp/drivers/gpadc/sunxi_gpadc.c
++++ b/bsp/drivers/gpadc/sunxi_gpadc.c
+@@ -2030,2 +2030,3 @@
+ 	pm_runtime_mark_last_busy(chip->dev);
+-	pm_runtime_put_autosuspend(chip->dev);
++	if (!chip->gpadc_config.keyadc_select)
++		pm_runtime_put_autosuspend(chip->dev);

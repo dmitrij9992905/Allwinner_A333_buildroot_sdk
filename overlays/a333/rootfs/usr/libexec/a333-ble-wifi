@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""BlueZ BLE GATT Wi-Fi provisioning for a locally authorized pairing window."""
+
+import asyncio
+import json
+import logging
+import os
+import time
+import uuid
+
+from dbus_next import BusType, Message, MessageType, Variant
+from dbus_next.aio import MessageBus
+from dbus_next.errors import DBusError
+from dbus_next.service import PropertyAccess, ServiceInterface, dbus_property, method
+
+APP = "/org/a333/provision"
+SERVICE = APP + "/wifi"
+WRITE = SERVICE + "/credentials"
+STATUS = SERVICE + "/status"
+AD = APP + "/advertisement"
+AGENT = APP + "/agent"
+SERVICE_UUID = "e591cbb6-4d2a-4a04-aa78-209eb9b4ca33"
+WRITE_UUID = "e591cbb7-4d2a-4a04-aa78-209eb9b4ca33"
+STATUS_UUID = "e591cbb8-4d2a-4a04-aa78-209eb9b4ca33"
+PAIRING_MARKER = "/run/a333-ble-pairing-enabled"
+MEDIA_PAIRING_MARKER = "/run/a333-media-pairing-enabled"
+
+
+def marker_open(path, duration):
+    try:
+        return time.time() - os.stat(path).st_mtime < duration
+    except FileNotFoundError:
+        return False
+
+
+def pairing_open():
+    return marker_open(PAIRING_MARKER, 300) or marker_open(MEDIA_PAIRING_MARKER, 120)
+
+
+def v(signature, value):
+    return Variant(signature, value)
+
+
+class ObjectManager(ServiceInterface):
+    def __init__(self, state):
+        super().__init__("org.freedesktop.DBus.ObjectManager")
+        self.state = state
+
+    @method()
+    def GetManagedObjects(self) -> "a{oa{sa{sv}}}":
+        return {
+            SERVICE: {"org.bluez.GattService1": {
+                "UUID": v("s", SERVICE_UUID), "Primary": v("b", True),
+                "Characteristics": v("ao", [WRITE, STATUS]),
+            }},
+            WRITE: {"org.bluez.GattCharacteristic1": {
+                "UUID": v("s", WRITE_UUID), "Service": v("o", SERVICE),
+                "Flags": v("as", ["write", "encrypt-write"]),
+            }},
+            STATUS: {"org.bluez.GattCharacteristic1": {
+                "UUID": v("s", STATUS_UUID), "Service": v("o", SERVICE),
+                "Flags": v("as", ["read", "encrypt-read"]),
+            }},
+        }
+
+
+class GattService(ServiceInterface):
+    def __init__(self):
+        super().__init__("org.bluez.GattService1")
+
+    @dbus_property(access=PropertyAccess.READ)
+    def UUID(self) -> "s":
+        return SERVICE_UUID
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Primary(self) -> "b":
+        return True
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Characteristics(self) -> "ao":
+        return [WRITE, STATUS]
+
+
+class Characteristic(ServiceInterface):
+    def __init__(self, state, is_write):
+        super().__init__("org.bluez.GattCharacteristic1")
+        self.state = state
+        self.is_write = is_write
+
+    @dbus_property(access=PropertyAccess.READ)
+    def UUID(self) -> "s":
+        return WRITE_UUID if self.is_write else STATUS_UUID
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Service(self) -> "o":
+        return SERVICE
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Flags(self) -> "as":
+        return ["write", "encrypt-write"] if self.is_write else ["read", "encrypt-read"]
+
+    @method()
+    def ReadValue(self, options: "a{sv}") -> "ay":
+        if self.is_write:
+            raise DBusError("org.bluez.Error.NotPermitted", "write only")
+        offset = options.get("offset", v("q", 0)).value
+        return bytes(self.state.status, "utf-8")[offset:]
+
+    @method()
+    async def WriteValue(self, value: "ay", options: "a{sv}"):
+        if not self.is_write:
+            raise DBusError("org.bluez.Error.NotPermitted", "read only")
+        if options.get("offset", v("q", 0)).value != 0 or len(value) > 512:
+            raise DBusError("org.bluez.Error.InvalidValueLength", "invalid length")
+        try:
+            data = json.loads(bytes(value).decode("utf-8"))
+            ssid = data["ssid"]
+            password = data["password"]
+            if not isinstance(ssid, str) or not 1 <= len(ssid.encode()) <= 32:
+                raise ValueError("invalid SSID")
+            if not isinstance(password, str) or not 8 <= len(password) <= 63:
+                raise ValueError("invalid WPA password")
+            await self.state.connect_wifi(ssid, password)
+            self.state.status = "accepted"
+            logging.info("Wi-Fi provisioning accepted")
+        except (ValueError, KeyError, TypeError, UnicodeError) as error:
+            self.state.status = "invalid-request"
+            raise DBusError("org.bluez.Error.InvalidArguments", str(error)) from None
+        except DBusError:
+            self.state.status = "network-error"
+            logging.warning("NetworkManager rejected Wi-Fi connection")
+            raise DBusError("org.bluez.Error.Failed", "NetworkManager error") from None
+
+
+class Advertisement(ServiceInterface):
+    def __init__(self):
+        super().__init__("org.bluez.LEAdvertisement1")
+
+    @method()
+    def Release(self):
+        pass
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Type(self) -> "s":
+        return "peripheral"
+
+    @dbus_property(access=PropertyAccess.READ)
+    def ServiceUUIDs(self) -> "as":
+        return [SERVICE_UUID]
+
+    @dbus_property(access=PropertyAccess.READ)
+    def LocalName(self) -> "s":
+        return "A333-Setup"
+
+
+class PairingAgent(ServiceInterface):
+    def __init__(self):
+        super().__init__("org.bluez.Agent1")
+
+    @method()
+    def Release(self):
+        pass
+
+    @method()
+    def RequestAuthorization(self, device: "o"):
+        if not pairing_open():
+            raise DBusError("org.bluez.Error.Rejected", "pairing window closed")
+
+    @method()
+    def RequestConfirmation(self, device: "o", passkey: "u"):
+        if not pairing_open():
+            raise DBusError("org.bluez.Error.Rejected", "pairing window closed")
+
+    @method()
+    def AuthorizeService(self, device: "o", service_uuid: "s"):
+        pass
+
+    @method()
+    def Cancel(self):
+        pass
+
+
+class State:
+    def __init__(self, bus):
+        self.bus = bus
+        self.status = "ready"
+
+    async def call(self, destination, path, interface, member, signature="", body=None):
+        reply = await self.bus.call(Message(destination=destination, path=path,
+            interface=interface, member=member, signature=signature, body=body or []))
+        if reply.message_type == MessageType.ERROR:
+            raise DBusError(reply.error_name, reply.body[0] if reply.body else "D-Bus error")
+        return reply.body
+
+    async def connect_wifi(self, ssid, password):
+        nm = "org.freedesktop.NetworkManager"
+        path = "/org/freedesktop/NetworkManager"
+        device = (await self.call(nm, path, nm, "GetDeviceByIpIface", "s", ["wlan0"]))[0]
+        settings = {
+            "connection": {"id": v("s", "BLE " + ssid), "type": v("s", "802-11-wireless"),
+                "uuid": v("s", str(uuid.uuid4())), "autoconnect": v("b", True)},
+            "802-11-wireless": {"ssid": v("ay", ssid.encode()),
+                "mode": v("s", "infrastructure"),
+                "security": v("s", "802-11-wireless-security")},
+            "802-11-wireless-security": {"key-mgmt": v("s", "wpa-psk"),
+                "psk": v("s", password)},
+            "ipv4": {"method": v("s", "auto")},
+            "ipv6": {"method": v("s", "auto")},
+        }
+        await self.call(nm, path, nm, "AddAndActivateConnection2", "a{sa{sv}}ooa{sv}",
+            [settings, device, "/", {"persist": v("s", "disk")}])
+
+
+async def main():
+    logging.basicConfig(level=logging.INFO)
+    bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+    state = State(bus)
+    bus.export(APP, ObjectManager(state))
+    bus.export(SERVICE, GattService())
+    bus.export(WRITE, Characteristic(state, True))
+    bus.export(STATUS, Characteristic(state, False))
+    bus.export(AD, Advertisement())
+    bus.export(AGENT, PairingAgent())
+    adapter = "/org/bluez/hci0"
+    await state.call("org.bluez", adapter, "org.freedesktop.DBus.Properties", "Set", "ssv",
+        ["org.bluez.Adapter1", "Powered", v("b", True)])
+    manager = "/org/bluez"
+    await state.call("org.bluez", manager, "org.bluez.AgentManager1", "RegisterAgent",
+        "os", [AGENT, "NoInputNoOutput"])
+    await state.call("org.bluez", manager, "org.bluez.AgentManager1", "RequestDefaultAgent",
+        "o", [AGENT])
+    try:
+        await state.call("org.bluez", adapter, "org.bluez.GattManager1", "RegisterApplication",
+            "oa{sv}", [APP, {}])
+        await state.call("org.bluez", adapter, "org.bluez.LEAdvertisingManager1", "RegisterAdvertisement",
+            "oa{sv}", [AD, {}])
+        logging.info("BLE provisioning GATT service ready")
+    except DBusError:
+        logging.exception("BLE GATT/advertising unavailable; pairing agent remains active")
+    while True:
+        expired = False
+        for marker, duration in ((PAIRING_MARKER, 300),
+                                 (MEDIA_PAIRING_MARKER, 120)):
+            if os.path.exists(marker) and not marker_open(marker, duration):
+                os.unlink(marker)
+                expired = True
+        if expired:
+            await state.call("org.bluez", adapter, "org.freedesktop.DBus.Properties",
+                "Set", "ssv", ["org.bluez.Adapter1", "Pairable", v("b", pairing_open())])
+            await state.call("org.bluez", adapter, "org.freedesktop.DBus.Properties",
+                "Set", "ssv", ["org.bluez.Adapter1", "Discoverable",
+                              v("b", marker_open(MEDIA_PAIRING_MARKER, 120))])
+        await asyncio.sleep(5)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

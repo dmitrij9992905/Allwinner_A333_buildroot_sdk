@@ -3,7 +3,8 @@
 [Russian version](README_RU.md)
 
 This project provides an independent Linux build system for an Allwinner A333
-module installed on a HelperBoard with a 1280×800 MIPI display.
+module installed on a HelperBoard. Three product profiles are available:
+DMX tablet, Bluetooth/media tablet, and a headless controller.
 
 It is based on Buildroot 2025.02.16 and builds a system using `systemd`,
 `glibc`, and an AArch64 target toolchain. The vendor Linux 6.6 kernel, BSP,
@@ -20,39 +21,98 @@ an installed system.
 ```text
 buildroot/                  Buildroot sources
 configs/                    BR2_EXTERNAL, defconfig, and board configuration
-overlays/                   base rootfs files
+overlays/a333/rootfs/       common rootfs layer
+overlays/components/        optional display, DMX, media, headless layers
 oem/                        applications and OEM partition contents
 vendor/allwinner-a333/      Allwinner kernel, BSP, DTS, U-Boot, and pack SDK
 scripts/                    boot.img, full image, and RAUC bundle generation
 Dockerfile                  build environment container
 docker-build.sh             Docker build wrapper
+build.sh                    profile-aware build entry point
+profiles/*.conf             defconfig, ordered overlay lists, output paths
 output/                     build output, ignored by Git
 dl/, ccache/, toolchains/   local caches and toolchains, ignored by Git
 ```
 
 ## Building
 
-Docker Engine is required. The Docker Compose plugin is not required by the
-main wrapper. All host dependencies are installed inside the Docker image.
+Docker Engine is required; Docker Compose is not. Run the commands below from
+the repository root. The 32-bit vendor U-Boot toolchain is **not tracked by
+Git**: before the first build, provide
+`toolchains/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi/` so that its
+`bin/arm-linux-gnueabi-gcc` is executable. The vendor sources and packer under
+`vendor/allwinner-a333/` must also be present.
 
-First, build the Docker image:
+### First build after cloning
 
 ```sh
 ./docker-build.sh build
-```
-
-Prepare local vendor source archives and apply the board configuration:
-
-```sh
 ./docker-build.sh prepare-sources
-./docker-build.sh make BR2_EXTERNAL=../configs O=../output a333_helperboard_defconfig
+./build.sh list
+./build.sh dmx configure
+./build.sh dmx build
 ```
 
-Start the build:
+Replace `dmx` with `media` or `headless` to build another profile. Each has a
+separate `output/profiles/<profile>/` directory. `build` automatically runs
+`configure` when that profile has no `.config`, but the explicit step above
+makes the first-build sequence easier to inspect.
+
+### Clean rebuild of one profile
+
+To discard compiled packages, target rootfs and images for `dmx`, while
+keeping its current `.config` (including menuconfig changes), run:
 
 ```sh
-./docker-build.sh make BR2_EXTERNAL=../configs O=../output
+./build.sh dmx clean
+./build.sh dmx build
 ```
+
+To start again from the profile's defconfig instead:
+
+```sh
+./build.sh dmx clean
+./build.sh dmx configure
+./build.sh dmx build
+```
+
+`clean` affects only the selected profile's build output. It preserves
+`dl/` (downloaded sources and prepared vendor archives), `ccache/`, the
+untracked U-Boot toolchain in `toolchains/`, and signing keys in `keys/`.
+Neither rebuilding the Docker image nor rerunning `prepare-sources` is needed
+for an ordinary clean rebuild. Do not use Buildroot `distclean` for this
+workflow: it also removes `.config` and other configuration state. If the
+overlay list changes, use `clean` before building in the same output
+directory, or choose a new `OUTPUT_DIR` in the profile.
+
+Other useful commands:
+
+```sh
+./build.sh media build
+./build.sh headless build
+./build.sh media menuconfig
+```
+
+`profiles/*.conf` selects the defconfig, output directory, RAUC bundle name,
+and ordered `ROOTFS_OVERLAYS` and `OEM_OVERLAYS` arrays. Each path is relative
+to the project root. Buildroot copies rootfs layers into the base image; the
+post-build script copies OEM layers into the separate A/B OEM image. Later
+layers override earlier files with the same path. For example:
+
+```sh
+ROOTFS_OVERLAYS=(overlays/a333/rootfs overlays/components/display/rootfs overlays/components/media/rootfs)
+OEM_OVERLAYS=(oem/a333/common-rootfs oem/a333/media-rootfs)
+```
+
+Use a separate `OUTPUT_DIR` for each distinct stack; Buildroot's existing
+`target/` directory is incremental and does not delete files removed from a
+rootfs overlay. `./build.sh <profile> configure` synchronizes the selected
+rootfs list into `.config`. A profile can also set
+`PROFILE_ENV=("NAME=value")` for additional container build variables.
+The default directories are `output/profiles/{dmx,media,headless}`.
+The legacy `output/` build can still be used directly with `docker-build.sh`.
+Run `build.sh` on the host; it uses `docker-build.sh` automatically. It can
+also run from `/workspace` inside an interactive `docker-build.sh` session.
 
 The final post-image step automatically creates `boot.img`, A/B payload
 files, a RAUC bundle, and a complete vendor image using the `dragon` packer
@@ -69,7 +129,7 @@ Git.
 To change Buildroot settings:
 
 ```sh
-./docker-build.sh make BR2_EXTERNAL=../configs O=../output menuconfig
+./build.sh dmx menuconfig
 ```
 
 Downloaded sources and the compiler cache are kept in the project's `dl/` and
@@ -81,7 +141,7 @@ on the Ubuntu version installed on the host.
 After a successful build, the files are available in:
 
 ```text
-output/images/
+output/profiles/<profile>/images/
 ```
 
 Main artifacts:
@@ -96,7 +156,64 @@ Main artifacts:
 | `boot.img` | kernel and DTB for the vendor packer |
 | `a333-helperboard-full.img` | complete vendor image for the initial eMMC flash |
 | `a333-helperboard-sys_partition.fex` | A/B partition map used by the packer |
-| `a333-helperboard.raucb` | signed RAUC update bundle |
+| `a333-<profile>.raucb` | signed RAUC update bundle |
+
+RAUC compatible IDs are distinct for the DMX, media and headless products, so
+an OTA payload for one profile cannot be installed onto another by mistake.
+All three retain rootfs A/B and OEM A/B slots. The OEM staging directory is
+per-output (`output/profiles/<profile>/build/a333-oem-root`), preventing one
+profile's application from leaking into another profile's image.
+
+The media profile provides an A2DP sink, a BlueALSA HFP hands-free endpoint,
+MPD for internet radio/local/NFS music, and a basic touch controller showing
+BlueZ AVRCP track metadata. Put radio URLs in `/userdata/media/radio.m3u` and
+music files under `/userdata/media/music`. Its media UI is a first integration
+pass: phone cover-art transfer, HFP microphone routing, USB automount and
+network-share browsing are **not yet implemented or hardware-verified**.
+The **Music** button rescans `/userdata/media/music`, fills the MPD queue and
+starts playback; **Pair BT** opens a two-minute pairing window when `hci0` is
+available. If the adapter is absent, check the AIC Wi-Fi/SDIO power-on errors
+in `dmesg` before debugging BlueZ or the media UI.
+The tablet's V+/V- keys adjust the codec's left and right DAC gain for both
+local playback and Bluetooth audio (when the adapter is working).
+Linux reads the GPADC resistor ladder and reports `KEY_VOLUMEUP` (115) and
+`KEY_VOLUMEDOWN` (114) through evdev. The media backend sets `DACL Volume`
+and `DACR Volume` together in 3 dB steps over -60..0 dB, plus mute,
+capped at 0 dB (register 159); the top volume
+banner disappears five seconds after the last keypress. GPADC key channels
+stay powered so buttons also work after the board has been idle.
+
+`a333-audio-init.service` initializes the analog route once per boot at
+moderate volume, including LINEOUT gain (values 0/1 mute the output).
+To recover after manual mixer changes, run `a333-audio-init --force`.
+The media profile shares a 48 kHz ALSA `plug`/`dmix` output between MPD and
+Bluetooth, resampling other source rates. The codec patch removes advertised
+rates such as 88.2 kHz that its hardware setup table cannot configure.
+Only the profile's `bluealsad`/`bluealsa-playback` services run; upstream
+duplicate BlueALSA services and MPD socket activation are masked.
+
+AIC8800 uses the kernel's Allwinner power/rescan backend, with firmware in
+`/vendor/etc/firmware`. `a333-bluetooth-uart.service` unblocks the two Bluetooth
+rfkill controls and attaches `/dev/ttyS1` as H4 at 1500000 baud with RTS/CTS
+after the SDIO firmware upload. NetworkManager uses the D-Bus-enabled
+`wpa_supplicant.service` with EAP enabled (otherwise its D-Bus `EapMethods`
+getter fails and NetworkManager cannot initialize Wi-Fi).
+Check `nmcli device status`, `nmcli device wifi list ifname wlan0`, `bluetoothctl show`,
+and `systemctl status a333-bluetooth-uart` after boot.
+
+The headless profile disables the Linux DSI/LVDS/display/touch nodes in its
+DTB and installs GPIO command-line tools. The vendor bootloader still uses its
+own display configuration during early boot; connector pin ownership and
+electrical suitability must be verified against the board schematic before
+driving any MIPI/LVDS pin as GPIO.
+
+All profiles include BLE Wi-Fi provisioning GATT. An administrator must open
+the pairing window on the target with `a333-ble-pairing on`, pair a phone,
+write UTF-8 JSON `{"ssid":"...","password":"..."}` to characteristic
+`e591cbb7-4d2a-4a04-aa78-209eb9b4ca33`, then close with
+`a333-ble-pairing off`. The link is encrypted, but headless Just Works pairing
+does not provide MITM protection; use a trusted physical setup environment.
+The pairing window closes automatically after five minutes.
 
 The OEM partition currently contains the `dmx-panel` demonstration
 application, ported from the Luckfox Pico Panel86 and adapted for a 1280×800
@@ -152,11 +269,18 @@ output/host/bin/adb shell
 This version of `adbd` provides a root shell without ADB authentication.
 Port 5555 must therefore only be used on a trusted network.
 
+USB ADB uses configfs FunctionFS (`CONFIG_USB_CONFIGFS_F_FS`), not the legacy
+`CONFIG_USB_FUNCTIONFS`/`g_ffs` gadget, which conflicts with `ffs.adb`. The bind
+helper waits for FunctionFS ep1/ep2 and retries UDC binding; this kernel has no
+configfs FunctionFS `ready` attribute.
+
 Service status can be inspected with:
 
 ```sh
 systemctl status sshd adbd NetworkManager bluetooth
 journalctl -u sshd -u adbd -u NetworkManager -u bluetooth
+ls /sys/class/udc
+cat /sys/kernel/config/usb_gadget/a333/functions/ffs.adb/ready
 ```
 
 ## Network management
@@ -333,10 +457,14 @@ Use the following bundle to update an already running system:
 output/images/a333-helperboard.raucb
 ```
 
-The bundle contains two images:
+The bundle contains three images, installed into one inactive A/B group:
 
+- `boot` — kernel and DTB (`boot.img`), in bootA/bootB (`p4/p5`);
 - `rootfs` — updates the inactive rootfs slot;
 - `oem` — updates the corresponding OEM slot.
+
+RAUC status is kept in `/userdata/var/lib/rauc`, outside the updated slots.
+Boot0, BL31, SCP, U-Boot and userdata are not replaced by an OTA bundle.
 
 Start the update on the target system with:
 
@@ -348,7 +476,29 @@ reboot
 The custom RAUC backend maps RAUC operations to the Allwinner U-Boot
 `systemAB_next`, `systemAB_damage`, and `bootcount` variables. After a
 successful boot, run an application health check and mark the new slot as
-good. If the boot fails, U-Boot should return the system to the previous slot.
+good (`rauc status mark-good booted`). The custom backend uses the vendor's
+single health marker, not independent per-slot health flags. Automatic retry/
+rollback requires separately verified U-Boot bootcount integration; a successful
+OTA reboot alone does not prove unattended recovery from a failed kernel.
+
+Older images need a one-time migration before accepting the new three-image
+bundle: add the boot child slots to `/etc/rauc/system.conf` and correct
+`/etc/fw_env.config` to the single `/dev/mmcblk0p2 0x0 0x20000` entry. This U-Boot
+does not use a redundant environment header. Some older vendor-generated env
+images also contain a leading NUL, hiding all variables from `fw_printenv`.
+Back up the first 128 KiB of both env partitions before repairing them;
+`scripts/normalize-a333-env.py INPUT_BACKUP OUTPUT_FILE` validates the CRC,
+preserves all variables and produces a standard environment file without
+writing to a device. Verify it with `fw_printenv` before installing it. Do not
+run `fw_setenv` against an invalid/empty environment: it can discard boot settings.
+Fresh full images generate a matching standard environment automatically.
+
+Verified on the media board on 2026-10-01: signed verity bundle
+`2026.10.01-adb-ota1` installed bootB/rootfsB/oemB through RAUC and rebooted into
+slot B with kernel build #9. The bootA checksum and userdata UUID were unchanged;
+ADB service, USB UDC configuration, TCP `adb shell`, and media/Wi-Fi/Bluetooth
+services were checked, and slot B was marked good. This test did not inject a
+failed boot or verify automatic rollback.
 
 The current build signs the bundle with an automatically generated development
 certificate stored in the ignored `keys/` directory. For production, provide
@@ -360,7 +510,7 @@ A333_RAUC_CERT=/workspace/keys/prod.cert.pem \
 ./docker-build.sh make BR2_EXTERNAL=../configs O=../output
 ```
 
-The RAUC bundle updates rootfs and OEM. It is not intended to modify the
+The RAUC bundle updates boot (kernel/DTB), rootfs and OEM. It does not modify the
 partition table, boot-resource, or U-Boot itself. Those components require a
 separate initial/vendor flashing procedure.
 

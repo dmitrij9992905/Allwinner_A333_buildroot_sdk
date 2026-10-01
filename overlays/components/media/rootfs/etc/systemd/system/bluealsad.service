@@ -1,0 +1,13 @@
+[Unit]
+Description=Bluetooth audio receiver and hands-free profile
+After=bluetooth.service dbus.service
+Requires=bluetooth.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bluealsa -p a2dp-sink -p hfp-hf -p hsp-hs
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

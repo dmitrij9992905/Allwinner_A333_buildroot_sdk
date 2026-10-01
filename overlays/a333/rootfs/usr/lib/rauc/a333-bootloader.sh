@@ -31,12 +31,19 @@ set_primary()
 {
 	slot="$1"
 	valid_slot "$slot"
+	# Never overwrite a bad/uninitialized environment with fw_setenv's
+	# built-in defaults: that loses the board's boot commands and A/B mapping.
+	[ "$(env_get systemA)" = bootA ] && [ "$(env_get systemB)" = bootB ] || {
+		echo "Invalid A333 environment; repair/initialize it before OTA" >&2
+		return 1
+	}
 	# systemAB_next is consumed by sunxi_auto_switch_system() at boot.
 	# systemAB_damage is the vendor tree's persistent health marker: the
 	# selected slot is considered healthy when both values point to it.
-	fw_setenv systemAB_next "$slot"
-	fw_setenv systemAB_damage "$slot"
-	fw_setenv bootcount 0
+	settings=$(mktemp /run/a333-rauc-env.XXXXXX)
+	trap 'rm -f "$settings"' EXIT HUP INT TERM
+	printf 'systemAB_next %s\nsystemAB_damage %s\nbootcount 0\n' "$slot" "$slot" > "$settings"
+	fw_setenv -s "$settings"
 }
 
 set_state()
@@ -44,9 +51,14 @@ set_state()
 	slot="$1"
 	state="$2"
 	valid_slot "$slot"
+	[ "$(env_get systemA)" = bootA ] && [ "$(env_get systemB)" = bootB ] || {
+		echo "Invalid A333 environment; refusing slot state write" >&2
+		return 1
+	}
 	case "$state" in
 		good)
 			fw_setenv systemAB_damage "$slot"
+			fw_setenv bootcount 0
 			;;
 		bad)
 			fw_setenv systemAB_damage "$(other_slot "$slot")"

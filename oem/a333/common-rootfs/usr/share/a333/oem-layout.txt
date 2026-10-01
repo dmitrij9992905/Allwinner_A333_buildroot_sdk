@@ -1,0 +1,2 @@
+The OEM filesystem is an A/B RAUC slot. Product-specific application files
+are layered onto this common payload during image generation.

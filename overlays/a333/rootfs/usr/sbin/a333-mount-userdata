@@ -37,7 +37,8 @@ wait_for_userdata()
 populate_skeleton()
 {
     mkdir -p /userdata/var/lib /userdata/var/cache /userdata/var/log \
-        /userdata/home /userdata/root
+        /userdata/home /userdata/root /userdata/media/music \
+        /userdata/media/playlists /userdata/var/lib/mpd
     if [ -d /usr/share/a333/userdata-skel ]; then
         cp -a /usr/share/a333/userdata-skel/. /userdata/
     fi
@@ -92,6 +93,8 @@ mount_userdata()
     if [ ! -f /userdata/.a333-userdata-initialized ]; then
         populate_skeleton
     fi
+    mkdir -p /userdata/media/music /userdata/media/playlists \
+        /userdata/var/lib/mpd
     bind_persistent /userdata/var/lib /var/lib
     bind_persistent /userdata/var/cache /var/cache
     bind_persistent /userdata/var/log /var/log

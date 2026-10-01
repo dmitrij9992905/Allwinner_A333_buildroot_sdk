@@ -1,6 +1,21 @@
 menu "Allwinner A333 project"
 
 choice
+	prompt "A333 product profile"
+	default BR2_A333_PROFILE_DMX
+
+config BR2_A333_PROFILE_DMX
+	bool "1280x800 tablet with DMX panel"
+
+config BR2_A333_PROFILE_MEDIA
+	bool "1280x800 Bluetooth and network media tablet"
+
+config BR2_A333_PROFILE_HEADLESS
+	bool "Headless controller with display pins available as GPIO"
+
+endchoice
+
+choice
 	prompt "Display orientation"
 	default BR2_A333_DISPLAY_ORIENTATION_LANDSCAPE_CW
 	help
@@ -30,5 +45,6 @@ config BR2_A333_DISPLAY_ROTATION
 	default 270 if BR2_A333_DISPLAY_ORIENTATION_LANDSCAPE_CCW
 
 source "$BR2_EXTERNAL_A333_PATH/package/dmx-panel/Config.in"
+source "$BR2_EXTERNAL_A333_PATH/package/media-panel/Config.in"
 
 endmenu

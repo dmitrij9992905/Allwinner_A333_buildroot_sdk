@@ -6,10 +6,18 @@ export PATH
 
 G=/sys/kernel/config/usb_gadget/a333
 
+fail()
+{
+    echo "a333-usb-gadget: $*" >&2
+    return 1
+}
+
 prepare()
 {
-    mountpoint -q /sys/kernel/config || mount -t configfs none /sys/kernel/config
-    mkdir -p "$G/strings/0x409" "$G/configs/c.1/strings/0x409"
+    mountpoint -q /sys/kernel/config ||
+        mount -t configfs none /sys/kernel/config || fail "cannot mount configfs"
+    mkdir -p "$G/strings/0x409" "$G/configs/c.1/strings/0x409" ||
+        fail "cannot create gadget configuration"
     echo 0x18d1 > "$G/idVendor"
     echo 0x4ee7 > "$G/idProduct"
     echo A333 > "$G/strings/0x409/serialnumber"
@@ -18,21 +26,37 @@ prepare()
     echo 120 > "$G/configs/c.1/MaxPower"
     echo adb > "$G/configs/c.1/strings/0x409/configuration"
 
-    mkdir -p /dev/usb-ffs/adb
-    if ! mountpoint -q /dev/usb-ffs/adb; then
-        mount -t functionfs adb /dev/usb-ffs/adb
+    # FunctionFS can only be mounted after the configfs function exists.
+    if [ ! -d "$G/functions/ffs.adb" ]; then
+        mkdir "$G/functions/ffs.adb" || fail "cannot create ffs.adb function"
     fi
-    if [ ! -e "$G/functions/ffs.adb" ]; then
-        mkdir "$G/functions/ffs.adb"
+    mkdir -p /dev/usb-ffs/adb || fail "cannot create FunctionFS mount point"
+    if ! mountpoint -q /dev/usb-ffs/adb; then
+        mount -t functionfs adb /dev/usb-ffs/adb ||
+            fail "cannot mount FunctionFS (adb)"
     fi
     if [ ! -e "$G/configs/c.1/ffs.adb" ]; then
-        ln -s "$G/functions/ffs.adb" "$G/configs/c.1/ffs.adb"
+        ln -s "$G/functions/ffs.adb" "$G/configs/c.1/ffs.adb" ||
+            fail "cannot link ffs.adb into USB configuration"
     fi
 }
 
 bind_gadget()
 {
     udc=""
+    i=0
+    while [ "$i" -lt 40 ]; do
+        # Linux 6.6 FunctionFS has no configfs "ready" attribute. adbd
+        # creates these endpoints when it has written its descriptors.
+        if [ -e /dev/usb-ffs/adb/ep1 ] && [ -e /dev/usb-ffs/adb/ep2 ]; then
+            break
+        fi
+        i=$((i + 1))
+        sleep 0.25
+    done
+    if [ "$i" -eq 40 ]; then
+        fail "adbd did not initialize FunctionFS endpoints"
+    fi
     i=0
     while [ "$i" -lt 40 ]; do
         for node in /sys/class/udc/*; do
@@ -46,10 +70,23 @@ bind_gadget()
         sleep 0.25
     done
     if [ -z "$udc" ]; then
-        echo "a333-usb-gadget: no USB device controller exposed" >&2
-        return 0
+        fail "no USB device controller exposed"
     fi
-    echo "$udc" > "$G/UDC"
+    # Endpoint creation slightly precedes the kernel's ready callback.
+    # Retry binding rather than racing it (or waiting for a nonexistent file).
+    i=0
+    while [ "$i" -lt 40 ]; do
+        if [ "$(cat "$G/UDC")" = "$udc" ]; then
+            return 0
+        fi
+        if (echo "$udc" > "$G/UDC") 2>/dev/null; then
+            echo "a333-usb-gadget: ADB bound to $udc"
+            return 0
+        fi
+        i=$((i + 1))
+        sleep 0.25
+    done
+    fail "cannot bind initialized ADB endpoints to $udc"
 }
 
 stop_gadget()
@@ -60,10 +97,10 @@ stop_gadget()
     if [ -L "$G/configs/c.1/ffs.adb" ]; then
         rm -f "$G/configs/c.1/ffs.adb"
     fi
+    umount /dev/usb-ffs/adb 2>/dev/null || true
     if [ -d "$G/functions/ffs.adb" ]; then
         rmdir "$G/functions/ffs.adb" || true
     fi
-    umount /dev/usb-ffs/adb 2>/dev/null || true
 }
 
 case "${1:-prepare}" in

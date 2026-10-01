@@ -2,8 +2,14 @@
 # host-pahole for it. Disable BTF for the first bring-up; it can be enabled
 # later together with BR2_LINUX_KERNEL_NEEDS_HOST_PAHOLE=y.
 # CONFIG_DEBUG_INFO_BTF is not set
-# FunctionFS is required by the USB ADB gadget.
-CONFIG_USB_FUNCTIONFS=y
+# Use FunctionFS through configfs, NOT the legacy g_ffs gadget. Built-in
+# g_ffs claims the singleton FunctionFS instance and blocks mkdir ffs.adb.
+CONFIG_CONFIGFS_FS=y
+CONFIG_USB_GADGET=y
+CONFIG_USB_LIBCOMPOSITE=y
+CONFIG_USB_CONFIGFS=y
+CONFIG_USB_CONFIGFS_F_FS=y
+# CONFIG_USB_FUNCTIONFS is not set
 # The vendor tree contains warnings rejected by the newer Buildroot toolchain.
 # Keep them as warnings, matching the original SDK build behaviour.
 # CONFIG_WERROR is not set
@@ -40,6 +46,31 @@ CONFIG_AW_PCK600_DOMAINS=y
 # Legacy /dev/fb0 interface required by dmx-panel
 CONFIG_FB=y
 CONFIG_DRM_FBDEV_EMULATION=y
+
+# RAUC mounts signed .raucb bundles as loop-backed SquashFS images.
+CONFIG_BLK_DEV=y
+CONFIG_BLK_DEV_LOOP=y
+CONFIG_BLK_DEV_LOOP_MIN_COUNT=8
+CONFIG_MISC_FILESYSTEMS=y
+CONFIG_SQUASHFS=y
+CONFIG_SQUASHFS_ZLIB=y
+CONFIG_SQUASHFS_XZ=y
+
+# RAUC's format=verity bundles are SquashFS images exposed through dm-verity.
+CONFIG_MD=y
+CONFIG_BLK_DEV_DM=y
+CONFIG_DM_VERITY=y
+
+# AIC must toggle the board rails and rescan physical SDC1 via sunxi-rfkill.
+# The Ubuntu branch assumes an already powered adapter and times out instead.
+CONFIG_AW_RFKILL=y
+CONFIG_AIC_WLAN_SUPPORT=y
+CONFIG_PLATFORM_ALLWINNER=y
+# CONFIG_PLATFORM_UBUNTU is not set
+CONFIG_AIC8800_WLAN_SUPPORT=m
+CONFIG_AIC8800_BTLPM_SUPPORT=m
+CONFIG_BT_HCIUART=y
+CONFIG_BT_HCIUART_H4=y
 
 # dmx-panel owns the framebuffer; no kernel text console on the LCD
 # CONFIG_FRAMEBUFFER_CONSOLE is not set

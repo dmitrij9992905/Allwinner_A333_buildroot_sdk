@@ -21,3 +21,4 @@
 *~
 *.pyc
 /br.log
+*.log

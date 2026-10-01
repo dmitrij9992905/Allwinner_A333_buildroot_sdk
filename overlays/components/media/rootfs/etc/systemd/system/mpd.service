@@ -1,0 +1,13 @@
+[Unit]
+Description=Music Player Daemon (A333 media profile)
+After=a333-userdata.service a333-audio-init.service sound.target network.target
+Requires=a333-userdata.service a333-audio-init.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/mpd --no-daemon /etc/mpd.conf
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

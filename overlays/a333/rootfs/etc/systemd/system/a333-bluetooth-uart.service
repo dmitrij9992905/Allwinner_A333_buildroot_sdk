@@ -1,0 +1,17 @@
+[Unit]
+Description=A333 AIC8800 Bluetooth UART transport
+After=systemd-modules-load.service systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+Before=bluetooth.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStartPre=/usr/sbin/a333-bluetooth-prepare
+# AIC BSP uploads Bluetooth firmware through SDIO and selects 1.5M / RTS-CTS.
+ExecStart=/usr/bin/btattach -B /dev/ttyS1 -P h4 -S 1500000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

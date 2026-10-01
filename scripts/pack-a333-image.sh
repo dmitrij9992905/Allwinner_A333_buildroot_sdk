@@ -9,6 +9,11 @@ fi
 BINARIES_DIR="$(CDPATH= cd -- "$1" && pwd)"
 PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 PACK_ROOT="$PROJECT_ROOT/vendor/allwinner-a333/pack-sdk"
+# The vendor packer mutates its own config and out/ tree. Serialize profile
+# builds so parallel invocations cannot mix U-Boot, partition tables or logos.
+mkdir -p "$PACK_ROOT/out"
+exec 9> "$PACK_ROOT/out/.a333-pack.lock"
+flock -x 9
 PACK_WORK="$BINARIES_DIR/.a333-pack"
 PACK_PLAT_OUT="$PACK_WORK/plat"
 PACK_OUT_DIR="$PACK_WORK/pack_out"
@@ -18,7 +23,8 @@ HOOK="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/pack-pre-finish.sh"
 PARTITION_CONFIG="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/sys_partition-ab.fex"
 PACK_PARTITION_CONFIG="$PACK_ROOT/device/config/chips/a333/configs/pro/dragonboard/sys_partition.fex"
 FACTORY_IMAGE_DEFAULT="$PROJECT_ROOT/../allwinner-a333/helpera333_ubuntu22.04_xfce_mipi8.0_800x1280_20251114.img"
-CONFIG_FILE="${BR2_CONFIG:-$PROJECT_ROOT/output/.config}"
+OUTPUT_DIR="$(CDPATH= cd -- "$(dirname -- "$BINARIES_DIR")" && pwd)"
+CONFIG_FILE="${BR2_CONFIG:-$OUTPUT_DIR/.config}"
 DISPLAY_ROTATION="${A333_DISPLAY_ROTATION:-}"
 
 CUSTOM_ENV="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/env-ab.cfg"
@@ -68,7 +74,7 @@ mkdir -p "$(dirname "$PACK_CONFIG")"
 	printf '%s\n' "export LICHEE_BOOT0_BIN_NAME="
 	printf '%s\n' "export LICHEE_EFEX_BIN_NAME="
 	printf '%s\n' "export LICHEE_BUSSINESS="
-	printf '%s\n' "export LICHEE_KERN_DIR=$PROJECT_ROOT/output/build/linux-custom"
+	printf '%s\n' "export LICHEE_KERN_DIR=$OUTPUT_DIR/build/linux-custom"
 	printf '%s\n' "export LICHEE_TOP_DIR=$PACK_ROOT"
 	printf '%s\n' "export LICHEE_BUILD_DIR=$PACK_ROOT/build"
 	printf '%s\n' "export LICHEE_DEVICE_DIR=$PACK_ROOT/device"
@@ -83,7 +89,9 @@ mkdir -p "$(dirname "$PACK_CONFIG")"
 	printf '%s\n' 'export LICHEE_POSSIBLE_BIN_PATH="bin configs/pro/bin configs/pro/dragonboard/bin"'
 	printf '%s\n' "export LICHEE_PACK_SECURE_TYPE=none"
 	printf '%s\n' "export LICHEE_REDUNDANT_ENV_SIZE="
-	printf '%s\n' "export LICHEE_ONE_ENV_SIZE="
+	# Use standard unflagged mkenvimage output, matching our U-Boot and
+	# fw_env.config. The vendor generator inserts a leading NUL variable.
+	printf '%s\n' "export LICHEE_ONE_ENV_SIZE=131072"
 	printf '%s\n' "export BUILD_SATA=false"
 } > "$PACK_CONFIG"
 
@@ -143,6 +151,8 @@ if [ ! -f "$image" ]; then
 	exit 1
 fi
 
-cp -f "$image" "$BINARIES_DIR/a333-helperboard-full.img"
+# The vendor container includes large zero-filled partitions. Preserve its
+# bytes without allocating a second full flash-sized file on the host.
+cp --sparse=always -f "$image" "$BINARIES_DIR/a333-helperboard-full.img"
 cp -f "$PACK_OUT_DIR/sys_partition.fex" "$BINARIES_DIR/a333-helperboard-sys_partition.fex"
 echo "pack-a333-image: created $BINARIES_DIR/a333-helperboard-full.img"

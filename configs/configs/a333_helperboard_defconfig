@@ -12,7 +12,7 @@ BR2_TARGET_GENERIC_GETTY_PORT="ttyS0"
 BR2_INIT_SYSTEMD=y
 BR2_GLOBAL_PATCH_DIR="../configs/boards/a333/global-patches"
 
-BR2_ROOTFS_OVERLAY="../overlays/a333/rootfs"
+BR2_ROOTFS_OVERLAY="../overlays/a333/rootfs ../overlays/components/display/rootfs ../overlays/components/dmx/rootfs"
 BR2_ROOTFS_POST_BUILD_SCRIPT="../configs/boards/a333/helperboard-a333/post-build.sh"
 BR2_ROOTFS_POST_IMAGE_SCRIPT="../configs/boards/a333/helperboard-a333/post-image.sh"
 
@@ -48,13 +48,14 @@ BR2_TARGET_UBOOT_BOARD_DEFCONFIG="sun65iw1p1_a333"
 BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES="../configs/boards/a333/helperboard-a333/uboot-ab.config"
 BR2_TARGET_UBOOT_DEFAULT_ENV_FILE="../configs/boards/a333/helperboard-a333/env-ab.cfg"
 BR2_TARGET_UBOOT_PATCH="../configs/boards/a333/patches"
-BR2_TARGET_UBOOT_CUSTOM_MAKEOPTS="CROSS_COMPILE=/workspace/toolchains/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi- DTS_PATH=/workspace/output/build/uboot-custom/arch/arm/dts LICHEE_BOARD_CONFIG_DIR=/workspace/vendor/allwinner-a333/pack-sdk/device/config/chips/a333/configs/pro"
+BR2_TARGET_UBOOT_CUSTOM_MAKEOPTS="CROSS_COMPILE=/workspace/toolchains/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi- DTS_PATH=$(BUILD_DIR)/uboot-custom/arch/arm/dts LICHEE_BOARD_CONFIG_DIR=/workspace/vendor/allwinner-a333/pack-sdk/device/config/chips/a333/configs/pro"
 BR2_TARGET_UBOOT_FORMAT_BIN=y
 
 BR2_PACKAGE_RAUC=y
 BR2_PACKAGE_RAUC_NETWORK=y
 BR2_PACKAGE_RAUC_JSON=y
 BR2_PACKAGE_HOST_RAUC=y
+BR2_A333_PROFILE_DMX=y
 BR2_A333_DISPLAY_ORIENTATION_LANDSCAPE_CW=y
 BR2_PACKAGE_DMX_PANEL=y
 BR2_PACKAGE_DBUS=y
@@ -65,12 +66,17 @@ BR2_PACKAGE_WPA_SUPPLICANT=y
 BR2_PACKAGE_WPA_SUPPLICANT_NL80211=y
 BR2_PACKAGE_WPA_SUPPLICANT_CLI=y
 BR2_PACKAGE_WPA_SUPPLICANT_CTRL_IFACE=y
+BR2_PACKAGE_WPA_SUPPLICANT_DBUS=y
+BR2_PACKAGE_WPA_SUPPLICANT_EAP=y
+BR2_PACKAGE_WPA_SUPPLICANT_DBUS_INTROSPECTION=y
 BR2_PACKAGE_IW=y
 BR2_PACKAGE_I2C_TOOLS=y
 BR2_PACKAGE_BLUEZ5_UTILS=y
 BR2_PACKAGE_BLUEZ5_UTILS_CLIENT=y
 BR2_PACKAGE_BLUEZ5_UTILS_MONITOR=y
 BR2_PACKAGE_BLUEZ5_UTILS_TOOLS=y
+BR2_PACKAGE_PYTHON3=y
+BR2_PACKAGE_PYTHON_DBUS_NEXT=y
 BR2_PACKAGE_UTIL_LINUX_RFKILL=y
 BR2_PACKAGE_ALSA_LIB=y
 BR2_PACKAGE_ALSA_UTILS=y

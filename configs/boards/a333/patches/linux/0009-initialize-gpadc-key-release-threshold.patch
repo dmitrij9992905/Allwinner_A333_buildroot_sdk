@@ -1,0 +1,20 @@
+Key channels enable the high comparator interrupt dynamically after a press.
+Initialize its threshold even if the high interrupt starts disabled in DT.
+Otherwise releasing a key can race against a zero-valued release threshold.
+
+--- a/bsp/drivers/gpadc/sunxi_gpadc.c
++++ b/bsp/drivers/gpadc/sunxi_gpadc.c
+@@ -1352,3 +1352,3 @@
+-		if (BIT(i) & config->chd_select) {
++		if (BIT(i) & (config->chd_select | config->keyadc_select)) {
+ 			snprintf(name, sizeof(name), "channel%d_compare_higdata", i);
+ 			if (of_property_read_u32(np, name, &val)) {
+@@ -1668,5 +1668,6 @@
+ 			/* compare high data enable */
+-			if (config->chd_select & BIT(i)) {
+-				sunxi_gpadc_highirq_control(chip->reg_base, i, true);
++			if ((config->chd_select | config->keyadc_select) & BIT(i)) {
++				sunxi_gpadc_highirq_control(chip->reg_base, i,
++							    !!(config->chd_select & BIT(i)));
+ 				sunxi_gpadc_ch_cmp_high(chip, i, config->cmp_highdata[i]);
+ 			}

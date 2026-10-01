@@ -1,0 +1,14 @@
+[Unit]
+Description=A333 media UI and AVRCP/MPD controller
+After=local-fs.target a333-oem-mount.service a333-userdata.service bluetooth.service mpd.service
+Requires=a333-oem-mount.service a333-userdata.service
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/mkdir -p /run/a333-media
+ExecStart=/oem/usr/bin/media-panel
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

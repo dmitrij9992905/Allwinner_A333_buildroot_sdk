@@ -1,0 +1,2 @@
+Media profile OEM payload. The player UI and backend are staged here by the
+post-build step; mutable music and network credentials live under /userdata.

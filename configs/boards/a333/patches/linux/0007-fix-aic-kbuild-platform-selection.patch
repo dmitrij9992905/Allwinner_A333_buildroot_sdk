@@ -1,0 +1,51 @@
+Do not re-enable the generic Ubuntu backend when Kconfig disables it, and
+do not replace the Buildroot toolchain when selecting the Allwinner backend.
+
+--- a/bsp/drivers/net/wireless/aic8800/Makefile
++++ b/bsp/drivers/net/wireless/aic8800/Makefile
+@@ -46,9 +46,9 @@
+ endif
+ 
+ ifeq ($(CONFIG_PLATFORM_ALLWINNER), y)
+-KDIR  = /home/yaya/E/Allwinner/A133/Android10/linux-4.9
+-ARCH = arm64
+-CROSS_COMPILE = /home/yaya/E/Allwinner/r818/Android10/lichee/out/gcc-linaro-5.3.1-2016.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
++KDIR ?= /home/yaya/E/Allwinner/A133/Android10/linux-4.9
++ARCH ?= arm64
++CROSS_COMPILE ?= /home/yaya/E/Allwinner/r818/Android10/lichee/out/gcc-linaro-5.3.1-2016.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
+ export CONFIG_SUPPORT_LPM = y
+ ccflags-y += -DANDROID_PLATFORM
+ endif
+--- a/bsp/drivers/net/wireless/aic8800/aic8800_bsp/Makefile
++++ b/bsp/drivers/net/wireless/aic8800/aic8800_bsp/Makefile
+@@ -90,7 +90,7 @@
+ CONFIG_PLATFORM_ALLWINNER ?=n
+ CONFIG_PLATFORM_INGENIC_T20 ?= n
+ CONFIG_PLATFORM_AMLOGIC ?= n
+-CONFIG_PLATFORM_UBUNTU ?= y
++CONFIG_PLATFORM_UBUNTU ?= n
+ 
+ ifeq ($(CONFIG_PLATFORM_ROCKCHIP), y)
+ ccflags-$(CONFIG_PLATFORM_ROCKCHIP) += -DCONFIG_PLATFORM_ROCKCHIP
+--- a/bsp/drivers/net/wireless/aic8800/aic8800_fdrv/Makefile
++++ b/bsp/drivers/net/wireless/aic8800/aic8800_fdrv/Makefile
+@@ -358,7 +358,7 @@
+ CONFIG_PLATFORM_ALLWINNER ?= n
+ CONFIG_PLATFORM_INGENIC_T20 ?= n
+ CONFIG_PLATFORM_AMLOGIC ?= n
+-CONFIG_PLATFORM_UBUNTU ?= y
++CONFIG_PLATFORM_UBUNTU ?= n
+ 
+ ifeq ($(CONFIG_PLATFORM_ROCKCHIP), y)
+ ARCH := arm64
+--- a/bsp/drivers/net/wireless/aic8800/aic8800_btlpm/Makefile
++++ b/bsp/drivers/net/wireless/aic8800/aic8800_btlpm/Makefile
+@@ -9,7 +9,7 @@
+ CONFIG_PLATFORM_ROCKCHIP2 ?= n
+ CONFIG_PLATFORM_ALLWINNER ?= n
+ CONFIG_PLATFORM_AMLOGIC ?= n
+-CONFIG_PLATFORM_UBUNTU ?= y
++CONFIG_PLATFORM_UBUNTU ?= n
+ 
+ 
+ CONFIG_SUPPORT_LPM ?= n

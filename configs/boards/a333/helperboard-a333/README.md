@@ -45,10 +45,12 @@ The initial Allwinner layout uses the following logical names:
 The capital `A`/`B` suffix is intentional. It avoids enabling the unrelated
 Android `boot_a`/`boot_b` detection path when the target is Buildroot/Linux.
 
-U-Boot state is stored redundantly in `env` and `env-redund`. Boot selection
+U-Boot uses a single unflagged 128 KiB environment in `env` (`p2`);
+`env-redund` (`p3`) is an initial backup, not live redundancy. Boot selection
 uses `systemAB_next`, `systemAB_now`, `systemAB_damage`, `systemA`, `systemB`,
 `rootfsA`, `rootfsB`, `oemdevA`, and `oemdevB`. `bootcount`/`bootlimit` provide
-the failed-boot fallback.
+the basis for failed-boot fallback, which still requires a separate failure
+test before relying on unattended rollback.
 
 The base OS is built by Buildroot into `rootfs.ext4`. The post-image script
 duplicates it into `rootfsA.ext4`/`rootfsB.ext4` and creates a separate OEM
@@ -65,12 +67,14 @@ eMMC capacity and the board vendor's flashing tool before use.
 RAUC is enabled as a Buildroot package and uses a custom bootloader backend in
 `/usr/lib/rauc/a333-bootloader.sh`. The backend maps RAUC's slot operations to
 the Allwinner U-Boot variables `systemAB_next`, `systemAB_damage` and
-`bootcount`. The target also contains `/etc/fw_env.config` for the redundant
-`env`/`env-redund` partitions (`/dev/mmcblk0p2` and `/dev/mmcblk0p3` in the
-current draft layout).
+`bootcount`. `/etc/fw_env.config` contains only `/dev/mmcblk0p2 0x0 0x20000`,
+matching the non-redundant U-Boot build. Adding p3 would change the assumed
+header/CRC and is incorrect for this build.
 
-The post-image step creates a signed development bundle containing both the
-`rootfs` and `oem` slot classes. The development key is generated under the
+The post-image step first creates `boot.img`, then a signed development bundle
+containing `boot`, `rootfs` and `oem` slot classes. Boot and OEM are children of
+the rootfs slot, so kernel/DTB, OS and application switch together. Shared RAUC
+status lives in `/userdata/var/lib/rauc`. The development key is generated under the
 ignored project-local `keys/` directory. For production, set
 `A333_RAUC_KEY` and `A333_RAUC_CERT` to the controlled signing credentials.
 

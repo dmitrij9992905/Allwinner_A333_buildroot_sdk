@@ -1,0 +1,3 @@
+Headless A333 profile: the MIPI/LVDS display interface is disabled in the
+board-headless device tree overlay. Verify pinmux and voltage requirements
+against the board schematic before assigning individual pins to GPIO users.
