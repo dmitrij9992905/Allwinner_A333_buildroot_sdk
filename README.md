@@ -505,6 +505,64 @@ sftp root@<BOARD_IP>
 SSH host keys are generated in persistent `/var/lib/ssh` during the first
 boot. They survive A/B updates but are regenerated after a factory reset.
 
+### Userdata data protection
+
+An existing ext4 is never reformatted because `blkid`, `resize2fs` or mounting
+fails. Userdata startup stops with an error, preserving data and preventing
+dependent services from starting. Inspect `systemctl status a333-userdata.service`
+and `journalctl -b -u a333-userdata.service`; validation errors are no longer
+hidden. Do not factory-reset a damaged filesystem containing needed data.
+
+Before mounting, `e2fsck -p` replays the journal and performs only fixes safe
+for automatic repair. Exit codes 0 (clean) and 1 (corrected) allow startup to
+continue. Other codes, including reboot-required or manual-recovery cases,
+block mounting/resizing. No blanket `e2fsck -y` is used, and mounted userdata
+is never checked with this command.
+
+Automatic formatting requires both no filesystem signature and a successful
+**full-device all-zero check**. Unknown/nonzero contents, read errors and missing
+tools prohibit formatting. SDK factory images already contain a minimal ext4,
+so the full scan is normally unnecessary. Filesystem validation runs before
+partition-table expansion.
+
+RAUC and normal reboots must preserve `/userdata/media/music`. A complete flash
+contains a new userdata image; explicit `a333-factory-reset --confirm` also
+removes all its contents, including music.
+
+Userdata is prepared during early boot, after local filesystems and before
+`systemd-journal-flush` and `systemd-tmpfiles-setup`. Required directories are
+restored on every boot, including an already initialised userdata after an OTA:
+NetworkManager profiles, Bluetooth state, SSH keys, MPD/RAUC state and journal
+directories. Existing files are not replaced. Bluetooth, NetworkManager and
+time synchronisation wait for successful userdata preparation; the early journal
+daemon still starts immediately and logs to `/run` until the persistent flush.
+
+### Log storage and rotation
+
+System and service logs use journald, with persistent storage at
+`/userdata/var/log/journal` (bind-mounted as `/var/log/journal`). The shared
+`overlays/a333/rootfs/etc/systemd/journald.conf.d/60-a333-storage.conf` applies
+to all profiles, including kernel-debug variants:
+
+- Persistent journal budget: 64 MiB, keeping 128 MiB free on userdata.
+- Individual files: 8 MiB; rotation also occurs daily; retention is 7 days.
+- Early RAM journal budget: 8 MiB, with 2 MiB files.
+- Compression enabled; per-service rate limiting configured at 1000 messages
+  per 30 seconds (journald may scale the burst with available disk space).
+
+Journald automatically rotates and removes archived journals. Active files can
+temporarily put total usage above the budget; manually saved files such as
+`/userdata/dmesg.log` are not managed by this policy. Correct system time is
+important for age-based retention. No separate logrotate service is needed for
+journald logs.
+
+```sh
+journalctl --disk-usage
+journalctl -b
+journalctl -b -u NetworkManager -u bluetooth
+journalctl --list-boots
+```
+
 ### ADB shell
 
 `adbd` is available through USB FunctionFS and TCP port 5555 at the same

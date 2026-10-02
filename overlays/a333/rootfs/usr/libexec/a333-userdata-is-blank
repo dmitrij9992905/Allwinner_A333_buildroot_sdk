@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+"""Read-only, full-device all-zero check. No signature is not proof of blankness."""
+import os
+import stat
+import sys
+
+
+def is_blank(path):
+    fd = os.open(path, os.O_RDONLY | os.O_CLOEXEC)
+    try:
+        mode = os.fstat(fd).st_mode
+        if not (stat.S_ISBLK(mode) or stat.S_ISREG(mode)):
+            raise OSError("not a block device or filesystem image")
+        remaining = os.lseek(fd, 0, os.SEEK_END)
+        if remaining <= 0:
+            raise OSError("empty or invalid device size")
+        os.lseek(fd, 0, os.SEEK_SET)
+        zeros = bytes(1024 * 1024)
+        while remaining:
+            block = os.read(fd, min(remaining, len(zeros)))
+            if not block:
+                raise OSError("short read before end of device")
+            if block != zeros[:len(block)]:
+                return False
+            remaining -= len(block)
+        if os.read(fd, 1):
+            raise OSError("device size changed during verification")
+        return True
+    finally:
+        os.close(fd)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: a333-userdata-is-blank <device>", file=sys.stderr)
+        sys.exit(2)
+    try:
+        sys.exit(0 if is_blank(sys.argv[1]) else 1)
+    except OSError as error:
+        print("a333-userdata-is-blank: " + str(error), file=sys.stderr)
+        sys.exit(2)

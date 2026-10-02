@@ -1,13 +1,17 @@
 [Unit]
 Description=Mount A333 persistent userdata and bind mutable paths
+DefaultDependencies=no
 After=local-fs.target systemd-udev-settle.service
 Wants=systemd-udev-settle.service
+Before=systemd-journal-flush.service systemd-tmpfiles-setup.service sysinit.target shutdown.target
+Conflicts=shutdown.target
 
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/a333-mount-userdata start
 ExecStop=/usr/sbin/a333-mount-userdata stop
 RemainAfterExit=yes
+TimeoutStartSec=0
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=sysinit.target

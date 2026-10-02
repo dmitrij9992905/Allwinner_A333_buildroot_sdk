@@ -3,6 +3,7 @@ set -eu
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
+umask 022
 
 userdata_device()
 {
@@ -45,6 +46,44 @@ populate_skeleton()
     touch /userdata/.a333-userdata-initialized
 }
 
+prepare_userdata_directories()
+{
+    # Recreate required directories on EVERY boot, including after an OTA.
+    # Never copy defaults over existing user files or depend on the first-boot
+    # marker: newly installed services may need new state directories.
+    mkdir -p /userdata/var/lib/systemd /userdata/var/lib/mpd \
+        /userdata/var/lib/rauc /userdata/var/cache /userdata/var/log \
+        /userdata/home /userdata/root /userdata/media/music \
+        /userdata/media/playlists
+    mkdir -p /userdata/var/lib/NetworkManager/system-connections \
+        /userdata/var/lib/bluetooth /userdata/var/lib/ssh \
+        /userdata/var/lib/private /userdata/var/cache/private \
+        /userdata/var/log/private
+    chmod 0700 /userdata/root \
+        /userdata/var/lib/NetworkManager/system-connections \
+        /userdata/var/lib/bluetooth /userdata/var/lib/ssh \
+        /userdata/var/lib/private /userdata/var/cache/private \
+        /userdata/var/log/private
+
+    # PID 1 has established the machine ID before starting this service.
+    # The journal directory must exist on the NEW /var/log before flush.
+    machine_id="$(cat /etc/machine-id)"
+    case "$machine_id" in
+        ''|*[!0-9a-f]*)
+            echo "a333-mount-userdata: invalid machine ID; refusing journal setup" >&2
+            return 1
+            ;;
+    esac
+    if [ "${#machine_id}" -ne 32 ]; then
+        echo "a333-mount-userdata: invalid machine ID length" >&2
+        return 1
+    fi
+    mkdir -p /userdata/var/log/journal "/userdata/var/log/journal/$machine_id"
+    chown root:systemd-journal /userdata/var/log/journal \
+        "/userdata/var/log/journal/$machine_id"
+    chmod 2755 /userdata/var/log/journal "/userdata/var/log/journal/$machine_id"
+}
+
 bind_persistent()
 {
     source="$1"
@@ -55,11 +94,70 @@ bind_persistent()
     fi
 }
 
+prepare_userdata_filesystem()
+{
+    device="$1"
+    # Low-level probing avoids blkid's cache. Failure is NOT proof of emptiness.
+    if filesystem="$(blkid -p -s TYPE -o value "$device")"; then
+        if [ "$filesystem" != ext4 ]; then
+            echo "a333-mount-userdata: refusing to overwrite filesystem '$filesystem' on $device" >&2
+            return 1
+        fi
+    else
+        probe_rc=$?
+        if [ "$probe_rc" -ne 2 ] || [ -n "$filesystem" ]; then
+            echo "a333-mount-userdata: probe failed ($probe_rc) for $device; preserving data" >&2
+            return 1
+        fi
+        echo "a333-mount-userdata: no filesystem signature; checking ALL bytes of $device"
+        if ! python3 /usr/libexec/a333-userdata-is-blank "$device"; then
+            echo "a333-mount-userdata: device is not provably blank; refusing to format $device" >&2
+            return 1
+        fi
+        echo "a333-mount-userdata: initialising verified all-zero device $device"
+        mkfs.ext4 -F -L userdata "$device" || return 1
+    fi
+    # Preen only while unmounted. Replay the journal and repair only errors
+    # e2fsck considers safe to fix automatically, never use a blanket '-y'.
+    echo "a333-mount-userdata: checking and safely repairing ext4 on $device"
+    if e2fsck -p "$device"; then
+        check_rc=0
+    else
+        check_rc=$?
+    fi
+    case "$check_rc" in
+        0) ;;
+        1) echo "a333-mount-userdata: filesystem errors corrected on $device" ;;
+        *)
+            echo "a333-mount-userdata: e2fsck returned $check_rc for $device; refusing mount, resize and format" >&2
+            echo "a333-mount-userdata: back up data and perform manual offline recovery before retrying" >&2
+            return 1
+            ;;
+    esac
+    # Preserve diagnostics and stop on errors; never reformat an existing ext4.
+    if ! resize2fs -P "$device"; then
+        echo "a333-mount-userdata: ext4 validation failed for $device; preserving data" >&2
+        return 1
+    fi
+}
+
 mount_userdata()
 {
     if mountpoint -q /userdata; then
         return 0
     fi
+    device="$(wait_for_userdata || true)"
+    if [ -z "$device" ]; then
+        echo "a333-mount-userdata: userdata partition is not available" >&2
+        return 1
+    fi
+    for tool in blkid e2fsck resize2fs; do
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            echo "a333-mount-userdata: $tool is missing; preserving data" >&2
+            return 1
+        fi
+    done
+    prepare_userdata_filesystem "$device" || return 1
     if command -v a333-expand-userdata >/dev/null 2>&1; then
         if a333-expand-userdata; then
             :
@@ -73,28 +171,17 @@ mount_userdata()
             return "$rc"
         fi
     fi
-    device="$(wait_for_userdata || true)"
-    if [ -z "$device" ]; then
-        echo "a333-mount-userdata: userdata partition is not available" >&2
-        return 1
-    fi
-    if ! resize2fs -P "$device" >/dev/null 2>&1; then
-        echo "a333-mount-userdata: initialising ext4 on $device"
-        mkfs.ext4 -F -L userdata "$device"
-    fi
     mkdir -p /userdata
     mount -t ext4 -o noatime,nodev,nosuid "$device" /userdata
-    if command -v resize2fs >/dev/null 2>&1; then
-        resize2fs "$device"
-    else
-        echo "a333-mount-userdata: resize2fs is missing" >&2
+    if ! resize2fs "$device"; then
+        echo "a333-mount-userdata: expansion failed for $device; preserving data" >&2
+        umount /userdata || true
         return 1
     fi
     if [ ! -f /userdata/.a333-userdata-initialized ]; then
         populate_skeleton
     fi
-    mkdir -p /userdata/media/music /userdata/media/playlists \
-        /userdata/var/lib/mpd
+    prepare_userdata_directories
     bind_persistent /userdata/var/lib /var/lib
     bind_persistent /userdata/var/cache /var/cache
     bind_persistent /userdata/var/log /var/log

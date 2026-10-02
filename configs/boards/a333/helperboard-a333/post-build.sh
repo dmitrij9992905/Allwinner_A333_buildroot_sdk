@@ -172,8 +172,9 @@ if [ "$PROFILE" != headless ]; then
 else
     rm -f "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-touch-diag.service"
 fi
+rm -f "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-userdata.service"
 ln -sfn ../a333-userdata.service \
-    "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-userdata.service"
+    "$TARGET_DIR/etc/systemd/system/sysinit.target.wants/a333-userdata.service"
 ln -sfn ../a333-ble-wifi.service \
     "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-ble-wifi.service"
 ln -sfn ../a333-bluetooth-uart.service \
