@@ -2,6 +2,14 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "media-panel: regenerate EEZ UI",
+      "type": "process",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/media-panel-eez.sh", "generate", "${input:eezProject}"],
+      "options": {"cwd": "${workspaceFolder}", "env": {"EEZ_STUDIO": "${input:eezStudio}"}},
+      "problemMatcher": []
+    },
+    {
       "label": "SDK kernel: refresh headers and IntelliSense",
       "type": "process",
       "command": "bash",
@@ -41,6 +49,18 @@
     }
   ],
   "inputs": [
+    {
+      "id": "eezProject",
+      "type": "promptString",
+      "description": "EEZ project to generate/export into the SDK",
+      "default": "oem/a333/src/media-panel/eez/lvgl-media-player.eez-project"
+    },
+    {
+      "id": "eezStudio",
+      "type": "promptString",
+      "description": "EEZ Studio 0.29.0 executable / AppImage",
+      "default": "/home/dmitrij999/apps/EEZ-Studio-0.29.0.AppImage"
+    },
     {
       "id": "kernelProfile",
       "type": "pickString",

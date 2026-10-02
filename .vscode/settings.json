@@ -5,7 +5,9 @@
   "C_Cpp.errorSquiggles": "enabled",
   "C_Cpp.enhancedColorization": "enabled",
   "files.associations": {
-    "*.h": "c"
+    "*.h": "c",
+    "**/media-panel/ui/eez-flow.h": "cpp",
+    "**/media-panel/ui/vars.h": "cpp"
   },
   "files.watcherExclude": {
     "**/output/**": true,

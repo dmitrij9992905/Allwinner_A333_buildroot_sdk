@@ -170,6 +170,71 @@ RAUC bundle и полный vendor-образ через скопированн�
 
 ## Разработка media-panel в VSCode
 
+### Интерфейс EEZ Studio / EEZ Flow
+
+Редактируемый проект: `oem/a333/src/media-panel/eez/lvgl-media-player.eez-project`.
+Откройте его в **EEZ Studio 0.29.0**: LVGL **9.5.0**, цвет **32 bit**, EEZ Flow
+включён. Можно редактировать и внешний проект в
+`/home/dmitrij999/eez-projects/lvgl-media-player/`, затем экспортировать в SDK.
+Разметка экранов, привязки данных и навигация описаны в EEZ, а `media_ui.cpp`
+реализует native actions/variables. Сгенерированные файлы и runtime
+**eez-framework** из Studio сохранены в `ui/`: для сборки прошивки Studio не нужна.
+Не редактируйте сгенерированные файлы вручную.
+
+```sh
+# Генерация проекта из SDK:
+EEZ_STUDIO=/home/dmitrij999/apps/EEZ-Studio-0.29.0.AppImage \
+  bash scripts/media-panel-eez.sh generate
+# Генерация и экспорт внешнего рабочего проекта:
+EEZ_STUDIO=/home/dmitrij999/apps/EEZ-Studio-0.29.0.AppImage \
+  bash scripts/media-panel-eez.sh generate /home/dmitrij999/eez-projects/lvgl-media-player/lvgl-media-player.eez-project
+# Если код уже сгенерирован Studio, замените generate на import.
+bash scripts/media-panel-dev.sh build media
+```
+
+Задача VSCode **media-panel: regenerate EEZ UI** спрашивает пути к проекту и
+Studio. Скрипт проверяет сообщения генератора перед копированием в SDK.
+`wifi_networks` должен оставаться **не-native глобальной переменной Flow**
+(`array:string`): генератор native-массивов в Studio 0.29 выдаёт некорректный код.
+Другие привязки — native. Runtime использует C++17; совместимость
+`-fpermissive` ограничена сгенерированной таблицей native-переменных,
+рукописный C++ собирается строго.
+
+Переходы в стиле Android Material **Shared Axis X**: короткий горизонтальный
+сдвиг (32 dp), fade-through и плавная кривая fast-out-slow-in за 300 мс.
+Открытие движется влево, возврат на главный — вправо. Направление и длительность
+остаются в EEZ Flow; `media_transition.cpp` задаёт визуальную траекторию LVGL,
+не изменяя сгенерированные файлы. Preview Studio показывает базовую надвижку,
+а не нативное уточнение. Быстрые повторные переходы ожидают завершения текущего.
+Это переход внутри приложения, а не эффект запуска из лаунчера:
+[MaterialSharedAxis](https://developer.android.com/reference/com/google/android/material/transition/platform/MaterialSharedAxis).
+Экран Wi-Fi сканирует сети, позволяет выбрать сеть, ввести скрытый пароль
+экранной клавиатурой и подключиться через NetworkManager, не блокируя UI.
+При сканировании предпочтителен `wlan0`, но подключение через `p2p0` тоже
+отображается. Пароль очищается после отправки и не попадает в файлы статуса
+или логи приложения. Сохранённые учётные данные хранит NetworkManager в
+каталоге профилей на userdata. Скрытые/корпоративные сети настройте через `nmcli`.
+На всех экранах — светлые Material Symbols для действующих подключений Wi-Fi,
+Ethernet, Bluetooth; неактивные значки светло-серые. Плашка громкости исчезает
+через пять секунд после последнего события V+/V−. G2D, тач и FPS сохраняются
+через `panel-common`.
+
+Тест интерфейса на хосте, без framebuffer/радиомодуля/доступа к ЦУ:
+
+```sh
+cmake -S oem/a333/src/media-panel -B /tmp/a333-media-ui-test \
+  -DMEDIA_PANEL_G2D=OFF -DMEDIA_PANEL_BUILD_TESTS=ON
+cmake --build /tmp/a333-media-ui-test -j
+ctest --test-dir /tmp/a333-media-ui-test --output-on-failure
+python3 -m unittest discover -s scripts/tests -v
+```
+
+Первое обновление требует **rootfs и OEM вместе**: новый UI использует новый
+сетевой backend. Отдельная загрузка бинарника в старую прошивку сохраняет
+музыкальные/BT-команды, но не добавит backend нового экрана Wi-Fi.
+
+### Разработка приложения
+
 `oem/a333/src/media-panel/CMakeLists.txt` — CMake-проект приложения. Buildroot
 собирает его через `cmake-package`. Оба приложения линкуются с общей статической
 библиотекой `panel-common` в `oem/a333/src/panel-common/`: framebuffer/G2D,

@@ -31,6 +31,11 @@ bool panel_lvgl_fonts_init(panel_lvgl_fonts_t *fonts,
                          char *error,
                          size_t error_size);
 
+/* Applications with generated layouts can preserve their design font sizes. */
+bool panel_lvgl_fonts_init_sizes(panel_lvgl_fonts_t *fonts,
+                                uint16_t small, uint16_t normal, uint16_t large,
+                                char *error, size_t error_size);
+
 panel_lvgl_font_set_t panel_lvgl_fonts_ui(const panel_lvgl_fonts_t *fonts);
 void panel_lvgl_fonts_destroy(panel_lvgl_fonts_t *fonts);
 

@@ -1,5 +1,28 @@
 /* Per-build wrapper: the shared base configuration remains unchanged. */
 #include "panel_common_base_lv_conf.h"
+#cmakedefine01 PANEL_COMMON_EEZ_FONTS
+#cmakedefine01 PANEL_COMMON_EEZ_WIDGETS
+#if PANEL_COMMON_EEZ_WIDGETS
+#undef LV_USE_DROPDOWN
+#undef LV_USE_KEYBOARD
+#define LV_USE_DROPDOWN 1
+#define LV_USE_KEYBOARD 1
+/* Studio's amalgamated runtime contains actions for these widgets too. */
+#undef LV_USE_ARC
+#undef LV_USE_ROLLER
+#undef LV_USE_CALENDAR
+#define LV_USE_ARC 1
+#define LV_USE_ROLLER 1
+#define LV_USE_CALENDAR 1
+#endif
+#if PANEL_COMMON_EEZ_FONTS
+#undef LV_FONT_MONTSERRAT_24
+#undef LV_FONT_MONTSERRAT_32
+#undef LV_FONT_MONTSERRAT_40
+#define LV_FONT_MONTSERRAT_24 1
+#define LV_FONT_MONTSERRAT_32 1
+#define LV_FONT_MONTSERRAT_40 1
+#endif
 #if @PANEL_COMMON_LVGL_LOGGING_VALUE@
 #undef LV_USE_LOG
 #define LV_USE_LOG 1

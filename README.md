@@ -175,6 +175,70 @@ on the Ubuntu version installed on the host.
 
 ## Developing media-panel in VSCode
 
+### EEZ Studio / EEZ Flow interface
+
+The editable UI is `oem/a333/src/media-panel/eez/lvgl-media-player.eez-project`.
+Open it with **EEZ Studio 0.29.0**, LVGL **9.5.0**, **32-bit** color and EEZ Flow
+enabled. The external project in `/home/dmitrij999/eez-projects/lvgl-media-player/`
+can also be edited and exported into the SDK. Screen layout, data bindings and
+navigation come from EEZ; `media_ui.cpp` implements native actions/variables.
+The Studio-supplied **eez-framework** runtime and generated files live in `ui/`.
+They are included in the repository, so a firmware build does not require Studio.
+Do not edit generated files by hand.
+
+```sh
+# Generate the checked-in project and export generated sources:
+EEZ_STUDIO=/home/dmitrij999/apps/EEZ-Studio-0.29.0.AppImage \
+  bash scripts/media-panel-eez.sh generate
+# Or generate/export the external working project:
+EEZ_STUDIO=/home/dmitrij999/apps/EEZ-Studio-0.29.0.AppImage \
+  bash scripts/media-panel-eez.sh generate /home/dmitrij999/eez-projects/lvgl-media-player/lvgl-media-player.eez-project
+# If Studio has already generated it, use 'import' instead of 'generate'.
+bash scripts/media-panel-dev.sh build media
+```
+
+VSCode task **media-panel: regenerate EEZ UI** asks for the project and Studio
+executable. The exporter checks generator diagnostics before copying files into
+the SDK. `wifi_networks` must remain a **non-native Flow global** (`array:string`)
+because Studio 0.29's native-array generator is invalid; other bindings are native.
+The C++ runtime uses C++17; only Studio's native-variable table needs the scoped
+`-fpermissive` compatibility flag. Handwritten C++ stays strict.
+
+Transitions follow Android Material **Shared Axis X**: a short horizontal
+slide (32 dp), fade-through and fast-out-slow-in easing over 300 ms. Opening
+a page moves left; returning to Main moves right. Direction/duration remain
+in EEZ Flow; `media_transition.cpp` supplies the native LVGL visual path
+without modifying generated sources. Studio's preview shows the basic slide,
+not the native refinement. Rapid navigation is queued until the transition ends.
+This is an Android-style in-app transition, not a launcher/app-opening effect;
+see [MaterialSharedAxis](https://developer.android.com/reference/com/google/android/material/transition/platform/MaterialSharedAxis).
+The Wi-Fi screen scans networks, accepts a masked password via an onscreen
+keyboard and connects through NetworkManager without blocking the UI. Scans
+prefer `wlan0` over the vendor's `p2p0`; a connection already using `p2p0` is also
+shown as connected. Passwords are cleared after submission and omitted from
+status files/application logs. NetworkManager saves credentials in its persistent
+userdata-backed profile directory. Hidden/enterprise networks require `nmcli`
+profiles. Every screen has light Material Symbols for actual Wi-Fi, Ethernet
+and Bluetooth connections; inactive symbols are light grey. The volume banner
+is hidden five seconds after the last volume-key event. G2D, touch and FPS remain
+provided by `panel-common`.
+
+Native smoke test (no framebuffer, radio or target access):
+
+```sh
+cmake -S oem/a333/src/media-panel -B /tmp/a333-media-ui-test \
+  -DMEDIA_PANEL_G2D=OFF -DMEDIA_PANEL_BUILD_TESTS=ON
+cmake --build /tmp/a333-media-ui-test -j
+ctest --test-dir /tmp/a333-media-ui-test --output-on-failure
+python3 -m unittest discover -s scripts/tests -v
+```
+
+The first update needs **both rootfs and OEM**: the new interface uses the new
+network backend. Uploading only the application to an older firmware preserves
+music/BT controls but cannot enable the new Wi-Fi screen's backend.
+
+### Application development
+
 `oem/a333/src/media-panel/CMakeLists.txt` is the application's CMake project.
 Buildroot uses the same project through `cmake-package`. Both applications
 link the static `panel-common` library in `oem/a333/src/panel-common/`: fbdev/G2D,

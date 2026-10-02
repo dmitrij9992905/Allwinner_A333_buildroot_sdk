@@ -43,8 +43,17 @@ bool panel_lvgl_fonts_init(panel_lvgl_fonts_t *fonts,
                          char *error,
                          size_t error_size)
 {
-    if (fonts == NULL) {
-        set_error(error, error_size, "Roboto font destination is null");
+    return panel_lvgl_fonts_init_sizes(fonts, PANEL_FONT_SMALL_SIZE,
+                                      PANEL_FONT_NORMAL_SIZE, PANEL_FONT_LARGE_SIZE,
+                                      error, error_size);
+}
+
+bool panel_lvgl_fonts_init_sizes(panel_lvgl_fonts_t *fonts,
+                                uint16_t small, uint16_t normal, uint16_t large,
+                                char *error, size_t error_size)
+{
+    if (fonts == NULL || !small || !normal || !large) {
+        set_error(error, error_size, "Roboto font destination or size is invalid");
         return false;
     }
     memset(fonts, 0, sizeof(*fonts));
@@ -54,9 +63,9 @@ bool panel_lvgl_fonts_init(panel_lvgl_fonts_t *fonts,
         return false;
     }
 
-    if (!create_font(PANEL_FONT_SMALL_SIZE, &fonts->small) ||
-        !create_font(PANEL_FONT_NORMAL_SIZE, &fonts->normal) ||
-        !create_font(PANEL_FONT_LARGE_SIZE, &fonts->large)) {
+    if (!create_font(small, &fonts->small) ||
+        !create_font(normal, &fonts->normal) ||
+        !create_font(large, &fonts->large)) {
         set_error(error, error_size,
                   "cannot create LVGL fonts from embedded Roboto");
         panel_lvgl_fonts_destroy(fonts);

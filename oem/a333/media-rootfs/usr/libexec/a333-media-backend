@@ -13,6 +13,7 @@ from pathlib import Path
 
 from dbus_next import BusType, Message, MessageType, Variant
 from dbus_next.aio import MessageBus
+from a333_media_network import NetworkController
 
 RUN = Path("/run/a333-media")
 SOCKET = RUN / "control.sock"
@@ -273,8 +274,10 @@ async def main():
         pass
     control = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
     control.bind(str(SOCKET))
+    os.chmod(SOCKET, 0o600)
     control.setblocking(False)
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+    network = NetworkController(RUN, bus)
     current = {"source": "MPD", "player": None, "bt_status": "",
                "mode": "Music / radio", "volume_seq": 0}
     loop = asyncio.get_running_loop()
@@ -289,9 +292,13 @@ async def main():
 
     asyncio.create_task(poll())
     asyncio.create_task(volume_keys(current))
+    asyncio.create_task(network.poll())
     while True:
-        message = await loop.sock_recv(control, 32)
+        message = await loop.sock_recv(control, 4096)
         try:
+            if message.startswith(b"{"):
+                network.handle(message)
+                continue
             await handle(bus, current, message.decode("ascii"))
         except Exception:
             logging.exception("media control failed")

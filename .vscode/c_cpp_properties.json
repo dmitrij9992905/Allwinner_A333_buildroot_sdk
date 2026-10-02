@@ -6,10 +6,12 @@
       "compilerPath": "${workspaceFolder}/output/profiles/media/host/bin/aarch64-buildroot-linux-gnu-gcc",
       "intelliSenseMode": "linux-gcc-arm64",
       "cStandard": "c11",
+      "cppStandard": "c++17",
       "compileCommands": "${workspaceFolder}/output/dev/media-panel/media/compile_commands.host.json",
       "includePath": [
         "${workspaceFolder}/output/dev/kernel/media/headers/include",
         "${workspaceFolder}/oem/a333/src/media-panel",
+        "${workspaceFolder}/oem/a333/src/media-panel/ui",
         "${workspaceFolder}/oem/a333/src/dmx-panel/include",
         "${workspaceFolder}/oem/a333/src/panel-common/include",
         "${workspaceFolder}/oem/a333/src/panel-common/vendor/lvgl",
@@ -19,7 +21,6 @@
       "defines": [
         "_GNU_SOURCE",
         "LV_CONF_INCLUDE_SIMPLE=1",
-        "LV_DISABLE_API_MAPPING",
         "PANEL_DISPLAY_ROTATION=90",
         "MEDIA_PANEL_LOGGING=1"
       ],
@@ -45,10 +46,12 @@
       "compilerPath": "${workspaceFolder}/output/profiles/media-kernel-debug-logs/host/bin/aarch64-buildroot-linux-gnu-gcc",
       "intelliSenseMode": "linux-gcc-arm64",
       "cStandard": "c11",
+      "cppStandard": "c++17",
       "compileCommands": "${workspaceFolder}/output/dev/media-panel/media-kernel-debug-logs/compile_commands.host.json",
       "includePath": [
         "${workspaceFolder}/output/dev/kernel/media-kernel-debug-logs/headers/include",
         "${workspaceFolder}/oem/a333/src/media-panel",
+        "${workspaceFolder}/oem/a333/src/media-panel/ui",
         "${workspaceFolder}/oem/a333/src/dmx-panel/include",
         "${workspaceFolder}/oem/a333/src/panel-common/include",
         "${workspaceFolder}/oem/a333/src/panel-common/vendor/lvgl",
@@ -58,7 +61,6 @@
       "defines": [
         "_GNU_SOURCE",
         "LV_CONF_INCLUDE_SIMPLE=1",
-        "LV_DISABLE_API_MAPPING",
         "PANEL_DISPLAY_ROTATION=90",
         "MEDIA_PANEL_LOGGING=1"
       ],

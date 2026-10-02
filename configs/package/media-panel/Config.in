@@ -1,6 +1,7 @@
 config BR2_PACKAGE_MEDIA_PANEL
 	bool "media-panel"
 	depends on BR2_TOOLCHAIN_HAS_THREADS
+	depends on BR2_INSTALL_LIBSTDCPP
 	help
 	  Touch UI for the A333 media profile, using the project's copied
-	  LVGL framebuffer/evdev port.
+	  LVGL framebuffer/evdev port and generated EEZ Flow UI (C++17).
