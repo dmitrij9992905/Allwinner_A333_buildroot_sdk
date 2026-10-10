@@ -69,6 +69,8 @@ extern bool get_var_usb_available();
 extern void set_var_usb_available(bool value);
 extern bool get_var_sd_available();
 extern void set_var_sd_available(bool value);
+extern bool get_var_notify_visible();
+extern void set_var_notify_visible(bool value);
 
 #ifdef __cplusplus
 }

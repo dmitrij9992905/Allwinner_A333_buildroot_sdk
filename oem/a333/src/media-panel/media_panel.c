@@ -3,6 +3,7 @@
 #include "lvgl_fonts.h"
 #include "lvgl_port.h"
 #include "media_ui.h"
+#include "media_fonts.h"
 
 #include <fcntl.h>
 #include <errno.h>
@@ -64,7 +65,7 @@ int main(void)
         fprintf(stderr, "media-panel: %s\n", error);
         return 1;
     }
-    if (!panel_lvgl_fonts_init_sizes(&fonts, 24, 32, 40, error, sizeof(error))) {
+    if (!media_fonts_init(&fonts, error, sizeof(error))) {
         fprintf(stderr, "media-panel: %s\n", error);
         lvgl_port_deinit(port);
         return 1;
@@ -88,7 +89,7 @@ int main(void)
                                  .tv_nsec = (long)delay_ms * 1000000L};
         nanosleep(&pause, NULL);
     }
-    panel_lvgl_fonts_destroy(&fonts);
+    media_fonts_destroy();
     lvgl_port_deinit(port);
     if (tty >= 0) {
         (void)ioctl(tty, KDSETMODE, KD_TEXT);

@@ -7,6 +7,7 @@ MEDIA_PANEL_SITE = $(BR2_EXTERNAL_A333_PATH)/../oem/a333/src
 MEDIA_PANEL_SITE_METHOD = local
 MEDIA_PANEL_SUBDIR = media-panel
 MEDIA_PANEL_SUPPORTS_IN_SOURCE_BUILD = NO
+MEDIA_PANEL_DEPENDENCIES = freetype
 MEDIA_PANEL_LICENSE = Apache-2.0, MIT
 MEDIA_PANEL_LICENSE_FILES = panel-common/assets/fonts/LICENSE.txt panel-common/vendor/lvgl/LICENCE.txt \
 	media-panel/ui/eez-flow.h media-panel/eez/assets/material-icons/LICENSE
@@ -22,5 +23,8 @@ $(MEDIA_PANEL_DIR)/.stamp_rsynced: $(MEDIA_PANEL_SITE)/media-panel/CMakeLists.tx
 	$(wildcard $(MEDIA_PANEL_SITE)/media-panel/*.[ch]) \
 	$(wildcard $(MEDIA_PANEL_SITE)/media-panel/*.cpp) \
 	$(MEDIA_PANEL_SITE)/panel-common/CMakeLists.txt \
+	$(MEDIA_PANEL_SITE)/panel-common/cmake/lv_conf.h.in \
+	$(wildcard $(MEDIA_PANEL_SITE)/media-panel/cmake/*.cmake) \
+	$(wildcard $(MEDIA_PANEL_SITE)/media-panel/assets/fonts/*.ttf) \
 	$(BR2_EXTERNAL_A333_PATH)/package/media-panel/media-panel.mk
 $(MEDIA_PANEL_DIR)/.stamp_configured: $(MEDIA_PANEL_DIR)/.stamp_rsynced

@@ -1,0 +1,37 @@
+# Preserve Studio font names, pixel sizes and layout metrics across regeneration.
+# The generated C sources stay untouched and are used only to read metrics.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/ui/fonts.h" font_header)
+string(REGEX MATCHALL "extern const lv_font_t ui_font_[A-Za-z0-9_]+" declarations "${font_header}")
+set(bridges "#include \"media_fonts.h\"\n#include <stdint.h>\n")
+set(media_font_sizes 24 32 40)
+foreach(declaration IN LISTS declarations)
+    string(REGEX MATCH "ui_font_[A-Za-z0-9_]+" name "${declaration}")
+    if(NOT name MATCHES "^ui_font_skoda_pro(_medium)?_([0-9]+)$")
+        message(FATAL_ERROR "Unsupported EEZ runtime font ${name}: define its TTF mapping")
+    endif()
+    set(size "${CMAKE_MATCH_2}")
+    if(size LESS 1 OR size GREATER 256)
+        message(FATAL_ERROR "Unsupported EEZ font size ${size} in ${name}")
+    endif()
+    list(APPEND media_font_sizes "${size}")
+    set(source "${CMAKE_CURRENT_SOURCE_DIR}/ui/${name}.c")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${source}")
+    file(READ "${source}" bitmap_font)
+    foreach(metric line_height base_line)
+        string(REGEX MATCH "\\.${metric} = ([0-9]+)" match "${bitmap_font}")
+        if(NOT match)
+            message(FATAL_ERROR "Missing ${metric} in ${source}")
+        endif()
+        set(${metric} "${CMAKE_MATCH_1}")
+    endforeach()
+    string(APPEND bridges "const lv_font_t ${name} = {\n"
+        " .get_glyph_dsc = media_fonts_glyph_dsc, .get_glyph_bitmap = media_fonts_glyph_bitmap,\n"
+        " .release_glyph = media_fonts_release_glyph,\n"
+        " .line_height = ${line_height}, .base_line = ${base_line},\n"
+        " .dsc = (const void *)(uintptr_t)${size}, .fallback = &lv_font_montserrat_24\n};\n")
+endforeach()
+list(REMOVE_DUPLICATES media_font_sizes)
+list(SORT media_font_sizes COMPARE NATURAL)
+list(GET media_font_sizes -1 MEDIA_PANEL_FONT_MAX_SIZE)
+string(JOIN "," MEDIA_PANEL_FONT_SIZES ${media_font_sizes})
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/eez_freetype_fonts.c" CONTENT "${bridges}")

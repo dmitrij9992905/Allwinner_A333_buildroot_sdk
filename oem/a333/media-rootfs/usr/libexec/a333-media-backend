@@ -137,11 +137,19 @@ def clean(value):
     return " ".join(str(value).split())[:240]
 
 
-async def bt_track(bus):
+async def bt_track(bus, notifications=None):
     reply = await bus.call(Message(destination="org.bluez", path="/",
         interface="org.freedesktop.DBus.ObjectManager", member="GetManagedObjects"))
     if reply.message_type != MessageType.METHOD_RETURN:
         return None
+    if notifications is not None:
+        connected = {}
+        for path, interfaces in reply.body[0].items():
+            device = interfaces.get('org.bluez.Device1', {})
+            if device.get('Connected') and device['Connected'].value:
+                name = device.get('Alias') or device.get('Name') or device.get('Address')
+                connected[path] = clean(name.value if name else path.rsplit('/', 1)[-1])
+        notifications.observe_bluetooth(connected)
     players = []
     for path, interfaces in reply.body[0].items():
         player = interfaces.get("org.bluez.MediaPlayer1")
@@ -164,9 +172,12 @@ async def update_status(bus, current):
     filename = ""
     playback = current.get('playback')
     snapshot = await playback.poll() if playback else {}
+    notifications = current.get('notifications')
+    if playback and notifications:
+        notifications.observe_mounts(playback.mounts)
     position, duration, token, seekable = 0, 0, '', False
     try:
-        bluetooth = await bt_track(bus)
+        bluetooth = await bt_track(bus, notifications)
     except Exception as error:
         logging.warning("Bluetooth status unavailable: %s", error)
         bluetooth = None
@@ -219,6 +230,8 @@ async def update_status(bus, current):
                   playback.cover_path if playback else '',
                   '%d %d' % (bool(playback and playback.available('usb')),
                               bool(playback and playback.available('sd')))))
+    # Optional append-only extension: connection OSD text + event sequence.
+    lines.extend(notifications.snapshot() if notifications else ('', '0'))
     temporary = RUN / "status.new"
     temporary.write_text("\n".join(map(clean, lines)) + "\n", encoding="utf-8")
     os.replace(temporary, RUN / "status")
@@ -318,6 +331,8 @@ async def main():
     current = {"source": "MPD", "player": None, "bt_status": "",
                "mode": "Music / radio", "volume_seq": 0}
     current['playback'] = PlaybackController(RUN)
+    from a333_media_notifications import Notifications
+    current['notifications'] = Notifications()
     current['bt_artwork'] = BluetoothArtwork(bus, current['playback'].cover_dir)
     loop = asyncio.get_running_loop()
 
@@ -345,6 +360,7 @@ async def main():
                     continue
                 if request.get('command') == 'storage_changed':
                     await current['playback'].refresh_storage()
+                    current['notifications'].observe_mounts(current['playback'].mounts)
                     continue
                 network.handle(message)
                 continue

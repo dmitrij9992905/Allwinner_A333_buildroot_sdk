@@ -113,6 +113,32 @@ Each profile uses `output/profiles/<profile>/` by default.
 The legacy `output/` build can still be used directly with `docker-build.sh`.
 Run `build.sh` on the host; it uses `docker-build.sh` automatically. It can
 also run from `/workspace` inside an interactive `docker-build.sh` session.
+It detects the build-container context and does not start nested Docker.
+All commands use the chosen profile's output directory. On first use, the
+profile's defconfig is loaded automatically, including before `menuconfig`.
+Existing `.config` changes are kept unless you explicitly run `configure`.
+
+```sh
+# Run directly on the host; no preliminary container shell is needed:
+./build.sh media menuconfig
+./build.sh media build linux-menuconfig
+./build.sh media build busybox-menuconfig
+./build.sh media savedefconfig
+./build.sh media build
+
+# Or use the same interface from a build-container shell:
+./docker-build.sh
+cd /workspace
+./build.sh media menuconfig
+```
+
+Docker attaches stdin and allocates a terminal automatically when stdin/stdout
+are terminals, forwarding `TERM` for ncurses. Interactive configuration must
+not be piped to `tee` or redirected; use `ssh -t` when launching remotely.
+Non-interactive builds still support `./build.sh media build | tee build.log`
+and CI without a TTY. `savedefconfig` writes the profile's minimal configuration
+to `output/profiles/media/defconfig`; review it before replacing the source
+defconfig in `configs/configs/`.
 
 ### Kernel logging variants
 
@@ -208,9 +234,25 @@ The main page has three tabs: Now playing, Source and Wi-Fi. Shared EEZ widgets
 provide the connection bar and volume notification. The clock displays a Russian
 date/time (for example `08 октября 2026, 14:35:20`) using the device's system time
 and timezone, without requiring a Russian locale. MPD's current file/URI is also
-shown. Skoda fonts authored in Studio remain generated **C source files** in
-`ui/ui_font_*.c`; builds do not require external TTF/binary fonts or Studio.
-Only built-in Montserrat preview fonts are replaced by the Unicode Roboto font.
+shown. Media-panel renders fonts using **FreeType** and the copied
+`assets/fonts/SkodaPro-Medium.ttf`, installed at
+`/oem/usr/share/media-panel/fonts/SkodaPro-Medium.ttf`. EEZ font sizes (14–40 px)
+and layout metrics are preserved, with normal style (no synthetic bold/italic).
+Studio's generated `ui/ui_font_*.c` remain available for preview, but their glyph
+tables are excluded from the firmware executable. CMake creates small FreeType
+compatibility descriptors automatically, so regenerating EEZ does not undo this.
+Buildroot selects the `freetype` dependency for both media profiles; DMX is unchanged.
+The development deploy script copies the TTF alongside the executable and sets
+`A333_MEDIA_FONT` to that copy. Existing devices need the FreeType runtime from
+the updated firmware before an app-only deployment can work.
+
+USB/SD mount/unmount and Bluetooth device connect/disconnect events reuse the
+authored EEZ `notify_panel` on all screens, in Russian. Each notification lasts
+five seconds; simultaneous events are queued. Both banners always appear at the
+top. Volume takes priority and hides the notification without extending its timer;
+the notification returns only if it has not expired. Startup snapshots and playback/source
+changes do not generate spurious connection events. Storage events mean a
+successful automount/unmount, not merely insertion of an unsupported filesystem.
 
 Transitions follow Android Material **Shared Axis X**: a short horizontal
 slide (32 dp), fade-through and fast-out-slow-in easing over 300 ms. Opening
@@ -509,8 +551,18 @@ MPD's folder artwork (`albumart`, e.g. `cover.jpg`/`cover.png`). JPEG/PNG
 artwork is resized in the backend and fitted without distortion; missing
 artwork uses the music icon. Cached PNG files live under `/run/a333-media/covers`,
 not inside the music collection. BlueZ experimental AVRCP/BIP cover-art transfer
-is also enabled, but requires support from the phone/player and still needs
-hardware verification. An A2DP connection alone does not guarantee artwork.
+is also enabled and verified with an Infinix GT 20 phone playing Yandex Music.
+It requires support from the phone/player; an A2DP connection alone does not
+guarantee artwork. Transfer completion uses D-Bus signals because BlueZ removes
+the transfer object immediately after completion, before polling may see it.
+
+`a333-obex` runs on the system bus with only the `bluetooth,filesystem,opp`
+plugins: BlueZ 5.79 requires a server driver to start its client API. Automatic
+incoming-file acceptance is disabled. The SDK patch regenerates the built-in
+plugin list after reconfiguration (enabling OBEX in an old build must not leave
+an empty list). To apply this patch to an existing build, run
+`./build.sh media build bluez5_utils-dirclean`, then `./build.sh media build`;
+use `media-kernel-debug-logs` instead when building that profile.
 
 The track slider shows elapsed time/duration. Drag/release it to seek a local,
 USB or SD track. Seeking is checked against the current MPD track ID to prevent

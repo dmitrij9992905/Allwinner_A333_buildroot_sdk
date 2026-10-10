@@ -69,22 +69,62 @@ class BluetoothArtwork:
             return None
         target = self.directory / 'bluetooth-download'
         target.unlink(missing_ok=True)
-        reply = await self.call('org.bluez.obex', self.session, 'org.bluez.obex.Image1',
-                                'GetThumbnail', 'ss', [str(target), handle])
-        transfer = reply[0]
-        for _ in range(60):
-            state = await self.properties('org.bluez.obex', transfer, 'org.bluez.obex.Transfer1')
-            if target.exists() and target.stat().st_size > 16 * 1024 * 1024:
-                await self.close()
-                target.unlink(missing_ok=True)
-                raise ValueError('Oversized Bluetooth artwork')
-            if state.get('Status') == 'complete':
-                data = target.read_bytes()
-                target.unlink(missing_ok=True)
-                return data
-            if state.get('Status') == 'error':
-                await self.close()
-                raise ValueError('Bluetooth artwork transfer failed')
-            await asyncio.sleep(0.25)
-        await self.close()
-        raise asyncio.TimeoutError('Bluetooth artwork transfer timed out')
+        return await self.thumbnail(handle, target)
+
+    async def thumbnail(self, handle, target):
+        # BlueZ removes Transfer1 immediately after emitting complete/error.
+        # Subscribe BEFORE GetThumbnail, including completion before its reply.
+        updates = {}
+        session = self.session
+        rule = ("type='signal',sender='org.bluez.obex',"
+                "interface='org.freedesktop.DBus.Properties',"
+                "member='PropertiesChanged',arg0='org.bluez.obex.Transfer1',"
+                "path_namespace='" + session + "'")
+
+        def changed(message):
+            if (message.message_type == MessageType.SIGNAL and
+                    message.interface == 'org.freedesktop.DBus.Properties' and
+                    message.member == 'PropertiesChanged' and
+                    message.path and message.path.startswith(session + '/') and
+                    len(message.body) >= 2 and
+                    message.body[0] == 'org.bluez.obex.Transfer1'):
+                updates.setdefault(message.path, {}).update(
+                    {key: value.value for key, value in message.body[1].items()})
+
+        self.bus.add_message_handler(changed)
+        subscribed = False
+        try:
+            await self.call('org.freedesktop.DBus', '/org/freedesktop/DBus',
+                            'org.freedesktop.DBus', 'AddMatch', 's', [rule])
+            subscribed = True
+            reply = await self.call('org.bluez.obex', session, 'org.bluez.obex.Image1',
+                                    'GetThumbnail', 'ss', [str(target), handle])
+            transfer = reply[0]
+            state = {key: value.value for key, value in reply[1].items()}
+            for _ in range(60):
+                state.update(updates.get(transfer, {}))
+                if state.get('Status') not in ('complete', 'error'):
+                    try:
+                        state = await self.properties('org.bluez.obex', transfer,
+                                                      'org.bluez.obex.Transfer1')
+                    except ValueError:
+                        if updates.get(transfer, {}).get('Status') not in ('complete', 'error'):
+                            raise
+                    # A completion signal can arrive while GetAll is in flight.
+                    state.update(updates.get(transfer, {}))
+                if target.exists() and target.stat().st_size > 16 * 1024 * 1024:
+                    raise ValueError('Oversized Bluetooth artwork')
+                if state.get('Status') == 'complete':
+                    return target.read_bytes()
+                if state.get('Status') == 'error':
+                    raise ValueError('Bluetooth artwork transfer failed')
+                await asyncio.sleep(0.25)
+            raise asyncio.TimeoutError('Bluetooth artwork transfer timed out')
+        finally:
+            self.bus.remove_message_handler(changed)
+            if subscribed:
+                try:
+                    await self.call('org.freedesktop.DBus', '/org/freedesktop/DBus',
+                                    'org.freedesktop.DBus', 'RemoveMatch', 's', [rule])
+                except Exception:
+                    pass

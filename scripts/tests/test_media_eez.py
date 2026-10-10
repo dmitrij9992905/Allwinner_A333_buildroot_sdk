@@ -142,10 +142,16 @@ class ProjectTest(unittest.TestCase):
             root = page['components'][0]
             self.assertEqual((root['width'], root['height']), (1280, 800))
             instances = [w for w in root['children'] if w['type'] == 'LVGLUserWidgetWidget']
-            self.assertEqual({i['userWidgetPageName'] for i in instances}, {'top_panel', 'notify_panel_volume'})
+            self.assertEqual({i['userWidgetPageName'] for i in instances},
+                             {'top_panel', 'notify_panel_volume', 'notify_panel'})
             instance_names.extend(i['identifier'] for i in instances)
             volume = next(i for i in instances if i['userWidgetPageName'] == 'notify_panel_volume')
             self.assertEqual(volume['hiddenFlag'], '!volume_visible')
+            notice = next(i for i in instances if i['userWidgetPageName'] == 'notify_panel')
+            self.assertEqual(notice['hiddenFlag'], '!notify_visible')
+            self.assertFalse(notice['clickableFlag'])
+            self.assertEqual(volume['top'], 0)
+            self.assertEqual(notice['top'], 0)
             self.assertTrue(page['connectionLines'])
             for component in page['components']:
                 if component['type'] == 'LVGLActionComponent':

@@ -19,8 +19,9 @@ void media_backend_init(media_backend_state_t *state)
 
 bool media_backend_poll(media_backend_state_t *state, const char *path, double now)
 {
-    char lines[13][1024] = {{0}};
+    char lines[15][1024] = {{0}};
     state->volume_visible = state->volume[0] && now < state->volume_until;
+    state->notification_visible = state->notification[0] && now < state->notification_until;
     FILE *file = fopen(path, "r");
     if (!file)
         return false;
@@ -34,12 +35,12 @@ bool media_backend_poll(media_backend_state_t *state, const char *path, double n
     }
     // App-only deployments must keep working with the older backend.
     size_t count = 6;
-    while (complete && count < 13 && fgets(lines[count], sizeof(lines[count]), file)) {
+    while (complete && count < 15 && fgets(lines[count], sizeof(lines[count]), file)) {
         if (!strchr(lines[count], '\n')) complete = false;
         lines[count][strcspn(lines[count], "\r\n")] = '\0';
         ++count;
     }
-    if (count > 7 && count != 13) complete = false;
+    if (count > 7 && count != 13 && count != 15) complete = false;
     if (ferror(file)) complete = false;
     fclose(file);
     if (!complete)
@@ -50,7 +51,13 @@ bool media_backend_poll(media_backend_state_t *state, const char *path, double n
     if (errno || !lines[5][0] || *end || lines[5][0] == '-')
         return false;
     double position = 0, duration = 0;
-    if (count == 13) {
+    unsigned long notification_sequence = 0;
+    if (count == 15) {
+        errno = 0;
+        notification_sequence = strtoul(lines[14], &end, 10);
+        if (errno || !lines[14][0] || *end || lines[14][0] == '-') return false;
+    }
+    if (count >= 13) {
         position = strtod(lines[7], &end);
         if (!lines[7][0] || *end || !isfinite(position) || position < 0 || position > 8640000)
             return false;
@@ -69,7 +76,7 @@ bool media_backend_poll(media_backend_state_t *state, const char *path, double n
     snprintf(state->filename, sizeof(state->filename), "%s", lines[6]);
     state->position = position;
     state->duration = duration;
-    state->seekable = count == 13 && !strcmp(lines[9], "1") && duration > 0 && lines[10][0];
+    state->seekable = count >= 13 && !strcmp(lines[9], "1") && duration > 0 && lines[10][0];
     state->usb_available = lines[12][0] == '1';
     state->sd_available = lines[12][0] && lines[12][1] == ' ' && lines[12][2] == '1';
     snprintf(state->track_id, sizeof(state->track_id), "%.63s", lines[10]);
@@ -80,6 +87,12 @@ bool media_backend_poll(media_backend_state_t *state, const char *path, double n
     }
     state->volume_sequence = sequence;
     state->volume_visible = state->volume[0] && now < state->volume_until;
+    if (lines[13][0] && notification_sequence != state->notification_sequence) {
+        state->notification_until = now + 5.0;
+        snprintf(state->notification, sizeof(state->notification), "%s", lines[13]);
+    }
+    state->notification_sequence = notification_sequence;
+    state->notification_visible = state->notification[0] && now < state->notification_until;
     return true;
 }
 

@@ -1,5 +1,6 @@
 // Source-only export using the same lv_font_conv writers bundled with Studio.
-// Firmware compilation uses the resulting C files, never this workstation tool.
+// FreeType firmware reads layout metrics from these preview sources, but does
+// not link their bitmap glyph tables or invoke this workstation tool.
 const fs = require('fs');
 const path = require('path');
 

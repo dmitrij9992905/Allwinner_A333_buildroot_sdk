@@ -35,6 +35,9 @@ typedef struct _objects_t {
     lv_obj_t *main_volume_osd__notify_bar_volume;
     lv_obj_t *main_volume_osd__notify_text_volume_value_label;
     lv_obj_t *main_volume_osd__notify_progress_bar_volume;
+    lv_obj_t *main_notification_osd;
+    lv_obj_t *main_notification_osd__notify_bar;
+    lv_obj_t *main_notification_osd__notify_text_label;
     lv_obj_t *player_top_panel;
     lv_obj_t *player_top_panel__top_bar;
     lv_obj_t *player_top_panel__system_datetime_label;
@@ -49,6 +52,9 @@ typedef struct _objects_t {
     lv_obj_t *player_volume_osd__notify_bar_volume;
     lv_obj_t *player_volume_osd__notify_text_volume_value_label;
     lv_obj_t *player_volume_osd__notify_progress_bar_volume;
+    lv_obj_t *player_notification_osd;
+    lv_obj_t *player_notification_osd__notify_bar;
+    lv_obj_t *player_notification_osd__notify_text_label;
     lv_obj_t *wifi_top_panel;
     lv_obj_t *wifi_top_panel__top_bar;
     lv_obj_t *wifi_top_panel__system_datetime_label;
@@ -63,6 +69,9 @@ typedef struct _objects_t {
     lv_obj_t *wifi_volume_osd__notify_bar_volume;
     lv_obj_t *wifi_volume_osd__notify_text_volume_value_label;
     lv_obj_t *wifi_volume_osd__notify_progress_bar_volume;
+    lv_obj_t *wifi_notification_osd;
+    lv_obj_t *wifi_notification_osd__notify_bar;
+    lv_obj_t *wifi_notification_osd__notify_text_label;
     lv_obj_t *main_contents_container;
     lv_obj_t *main_tabs;
     lv_obj_t *now_playing_tab;

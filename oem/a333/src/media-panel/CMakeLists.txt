@@ -34,6 +34,7 @@ set(PANEL_COMMON_PERF_MONITOR "${MEDIA_PANEL_PERF_MONITOR}")
 set(PANEL_COMMON_EEZ_FONTS ON)
 set(PANEL_COMMON_EEZ_WIDGETS ON)
 set(PANEL_COMMON_ARTWORK ON)
+set(PANEL_COMMON_FREETYPE ON)
 add_subdirectory("${MEDIA_PANEL_COMMON_DIR}" panel-common)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -43,10 +44,20 @@ target_link_libraries(media_panel_eez PUBLIC panel_common)
 target_include_directories(media_panel_eez PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ui")
 target_compile_options(media_panel_eez PUBLIC -ULV_DISABLE_API_MAPPING)
 file(GLOB ui_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ui/*.c")
+# Studio keeps bitmap fonts for its preview. Firmware uses small compatibility
+# descriptors backed by FreeType instead; no generated glyph tables are linked.
+list(FILTER ui_sources EXCLUDE REGEX "/ui_font_[^/]+\\.c$")
+include(cmake/eez-freetype.cmake)
 # Only the native variable table requires C++; widgets/images remain C.
 # Studio 0.29 stores function pointers in void* without an explicit cast.
 set_source_files_properties(ui/ui.c PROPERTIES LANGUAGE CXX COMPILE_OPTIONS -fpermissive)
-add_library(media_panel_ui STATIC media_backend.c media_ui.cpp media_transition.cpp ${ui_sources})
+add_library(media_panel_ui STATIC media_backend.c media_ui.cpp media_transition.cpp
+    media_fonts.c "${CMAKE_CURRENT_BINARY_DIR}/eez_freetype_fonts.c" ${ui_sources})
+set(MEDIA_PANEL_FONT_PATH "/oem/usr/share/media-panel/fonts/SkodaPro-Medium.ttf"
+    CACHE STRING "Installed runtime Skoda TTF path")
+target_compile_definitions(media_panel_ui PRIVATE MEDIA_PANEL_FONT_PATH="${MEDIA_PANEL_FONT_PATH}"
+    MEDIA_PANEL_FONT_SIZES=${MEDIA_PANEL_FONT_SIZES}
+    MEDIA_PANEL_FONT_MAX_SIZE=${MEDIA_PANEL_FONT_MAX_SIZE})
 target_compile_definitions(media_panel_ui PRIVATE
     MEDIA_PANEL_LOGGING=$<BOOL:${MEDIA_PANEL_LOGGING}>)
 target_compile_options(media_panel_ui PRIVATE -Wall -Wextra)
@@ -58,6 +69,7 @@ target_compile_definitions(media-panel PRIVATE
 target_compile_options(media-panel PRIVATE -Wall -Wextra)
 target_link_libraries(media-panel PRIVATE media_panel_ui)
 install(TARGETS media-panel RUNTIME DESTINATION bin)
+install(FILES assets/fonts/SkodaPro-Medium.ttf DESTINATION share/media-panel/fonts)
 
 option(MEDIA_PANEL_BUILD_TESTS "Headless EEZ Flow/UI smoke tests (host only)" OFF)
 if(MEDIA_PANEL_BUILD_TESTS)
@@ -71,4 +83,6 @@ if(MEDIA_PANEL_BUILD_TESTS)
         -Wl,--wrap=media_backend_request)
     target_compile_options(media-panel-ui-test PRIVATE -UNDEBUG)
     add_test(NAME media-panel-ui COMMAND media-panel-ui-test)
+    set_tests_properties(media-panel-ui PROPERTIES ENVIRONMENT
+        "A333_MEDIA_FONT=${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/SkodaPro-Medium.ttf")
 endif()

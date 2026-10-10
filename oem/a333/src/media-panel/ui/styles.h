@@ -50,6 +50,12 @@ lv_style_t *get_style_skoda_style_progress_bar_INDICATOR_DEFAULT();
 void add_style_skoda_style_progress_bar(lv_obj_t *obj);
 void remove_style_skoda_style_progress_bar(lv_obj_t *obj);
 
+// Style: SkodaStyleSlider
+lv_style_t *get_style_skoda_style_slider_MAIN_DEFAULT();
+lv_style_t *get_style_skoda_style_slider_INDICATOR_DEFAULT();
+void add_style_skoda_style_slider(lv_obj_t *obj);
+void remove_style_skoda_style_slider(lv_obj_t *obj);
+
 #ifdef __cplusplus
 }
 #endif

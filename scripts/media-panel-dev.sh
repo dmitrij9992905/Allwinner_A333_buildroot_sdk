@@ -99,6 +99,8 @@ case "$action" in
                 ssh "$target" 'mkdir -p /userdata/dev/media-panel'
                 # Use legacy SCP protocol: the board need not run sftp-server.
                 scp -O "$binary" "$target:/userdata/dev/media-panel/media-panel.new"
+                scp -O "$project_dir/oem/a333/src/media-panel/assets/fonts/SkodaPro-Medium.ttf" \
+                    "$target:/userdata/dev/media-panel/SkodaPro-Medium.ttf"
                 ssh "$target" 'chmod 0755 /userdata/dev/media-panel/media-panel.new && mv -f /userdata/dev/media-panel/media-panel.new /userdata/dev/media-panel/media-panel'
                 ;;
             run)
@@ -108,7 +110,7 @@ case "$action" in
                 case "$profiling" in 0|1) ;; *) echo "Invalid A333_DEV_PANEL_PROFILE" >&2; exit 2 ;; esac
                 # Stop only the UI. Keep MPD/audio/Bluetooth/backend running.
                 # Restore the stock UI on exit, Ctrl-C or SSH disconnect.
-                ssh -tt "$target" "export A333_PANEL_RENDERER=$renderer A333_PANEL_PROFILE=$profiling;" 'set -eu
+                ssh -tt "$target" "export A333_PANEL_RENDERER=$renderer A333_PANEL_PROFILE=$profiling A333_MEDIA_FONT=/userdata/dev/media-panel/SkodaPro-Medium.ttf;" 'set -eu
 test -x /userdata/dev/media-panel/media-panel
 was_active=0
 if systemctl is-active --quiet a333-media.service; then was_active=1; fi

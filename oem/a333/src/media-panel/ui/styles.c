@@ -73,7 +73,7 @@ void init_style_skoda_style_notify_panel_MAIN_DEFAULT(lv_style_t *style) {
     lv_style_set_border_color(style, lv_color_hex(0xe8e8e8));
     lv_style_set_border_width(style, 3);
     lv_style_set_bg_color(style, lv_color_hex(0x000000));
-    lv_style_set_bg_opa(style, 180);
+    lv_style_set_bg_opa(style, 240);
 };
 
 lv_style_t *get_style_skoda_style_notify_panel_MAIN_DEFAULT() {
@@ -268,7 +268,6 @@ void init_style_skoda_style_progress_bar_MAIN_DEFAULT(lv_style_t *style) {
     lv_style_set_align(style, LV_ALIGN_CENTER);
     lv_style_set_bg_color(style, lv_color_hex(0xffffff));
     lv_style_set_bg_opa(style, 60);
-    lv_style_set_border_color(style, lv_color_hex(0xff0000));
 };
 
 lv_style_t *get_style_skoda_style_progress_bar_MAIN_DEFAULT() {
@@ -311,6 +310,54 @@ void remove_style_skoda_style_progress_bar(lv_obj_t *obj) {
 };
 
 //
+// Style: SkodaStyleSlider
+//
+
+void init_style_skoda_style_slider_MAIN_DEFAULT(lv_style_t *style) {
+    lv_style_set_align(style, LV_ALIGN_CENTER);
+    lv_style_set_bg_color(style, lv_color_hex(0xffffff));
+    lv_style_set_bg_opa(style, 60);
+};
+
+lv_style_t *get_style_skoda_style_slider_MAIN_DEFAULT() {
+    static lv_style_t *style;
+    if (!style) {
+        style = (lv_style_t *)lv_malloc(sizeof(lv_style_t));
+        lv_style_init(style);
+        init_style_skoda_style_slider_MAIN_DEFAULT(style);
+    }
+    return style;
+};
+
+void init_style_skoda_style_slider_INDICATOR_DEFAULT(lv_style_t *style) {
+    lv_style_set_bg_color(style, lv_color_darken(lv_color_hex(0x7ce735), 26));
+    lv_style_set_bg_grad_dir(style, LV_GRAD_DIR_HOR);
+    lv_style_set_bg_grad_color(style, lv_color_darken(lv_color_hex(0xceee70), 26));
+};
+
+lv_style_t *get_style_skoda_style_slider_INDICATOR_DEFAULT() {
+    static lv_style_t *style;
+    if (!style) {
+        style = (lv_style_t *)lv_malloc(sizeof(lv_style_t));
+        lv_style_init(style);
+        init_style_skoda_style_slider_INDICATOR_DEFAULT(style);
+    }
+    return style;
+};
+
+void add_style_skoda_style_slider(lv_obj_t *obj) {
+    (void)obj;
+    lv_obj_add_style(obj, get_style_skoda_style_slider_MAIN_DEFAULT(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_style(obj, get_style_skoda_style_slider_INDICATOR_DEFAULT(), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+};
+
+void remove_style_skoda_style_slider(lv_obj_t *obj) {
+    (void)obj;
+    lv_obj_remove_style(obj, get_style_skoda_style_slider_MAIN_DEFAULT(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_remove_style(obj, get_style_skoda_style_slider_INDICATOR_DEFAULT(), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+};
+
+//
 //
 //
 
@@ -325,6 +372,7 @@ void add_style(lv_obj_t *obj, int32_t styleIndex) {
         add_style_skoda_style_image_button_playback,
         add_style_skoda_style_tabs,
         add_style_skoda_style_progress_bar,
+        add_style_skoda_style_slider,
     };
     add_style_funcs[styleIndex](obj);
 }
@@ -340,6 +388,7 @@ void remove_style(lv_obj_t *obj, int32_t styleIndex) {
         remove_style_skoda_style_image_button_playback,
         remove_style_skoda_style_tabs,
         remove_style_skoda_style_progress_bar,
+        remove_style_skoda_style_slider,
     };
     remove_style_funcs[styleIndex](obj);
 }

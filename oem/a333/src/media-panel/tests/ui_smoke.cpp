@@ -1,5 +1,6 @@
 #include "media_ui.h"
 #include "media_backend.h"
+#include "media_fonts.h"
 #include "ui/screens.h"
 #include "ui/vars.h"
 #include "ui/fonts.h"
@@ -26,6 +27,7 @@ extern "C" bool __wrap_media_backend_poll(media_backend_state_t *state, const ch
     if (!sample_available) return false;
     *state = sample;
     state->volume_visible = state->volume[0] && now < state->volume_until;
+    state->notification_visible = state->notification[0] && now < state->notification_until;
     return true;
 }
 static void flush(lv_display_t *display, const lv_area_t *, uint8_t *)
@@ -70,13 +72,24 @@ int main(int argc, char **argv)
     lv_display_set_flush_cb(display, flush);
     panel_lvgl_fonts_t fonts;
     char error[256];
-    assert(panel_lvgl_fonts_init_sizes(&fonts, 24, 32, 40, error, sizeof(error)));
+    assert(media_fonts_init(&fonts, error, sizeof(error)));
+    for (auto *font : {&ui_font_skoda_pro_medium_14, &ui_font_skoda_pro_medium_24,
+                        &ui_font_skoda_pro_medium_40}) {
+        lv_font_glyph_dsc_t glyph = {};
+        assert(font->get_glyph_dsc == media_fonts_glyph_dsc);
+        assert(lv_font_get_glyph_dsc(font, &glyph, 0x416, 0)); // Cyrillic Ж
+        assert(!glyph.is_placeholder && glyph.gid.index != 0);
+        assert(lv_font_get_glyph_bitmap(&glyph, nullptr));
+        assert(glyph.resolved_font == font && glyph.entry);
+        lv_font_glyph_release_draw_data(&glyph);
+    }
     media_ui_init(&fonts);
     tick();
     assert(lv_screen_active() == objects.main);
     assert(!lv_obj_has_flag(objects.main_top_panel__system_wifi_connected_off, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_has_flag(objects.main_top_panel__system_wifi_connected_on, LV_OBJ_FLAG_HIDDEN));
     assert(lv_obj_has_flag(objects.main_volume_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(objects.main_notification_osd, LV_OBJ_FLAG_HIDDEN));
     assert(lv_color_eq(lv_obj_get_style_image_recolor(objects.main_top_panel__system_wifi_connected_on, LV_PART_MAIN),
                        lv_color_hex(0xf5f8ff)));
     assert(lv_obj_get_style_text_font(objects.main_top_panel__system_datetime_label, LV_PART_MAIN) ==
@@ -184,6 +197,8 @@ int main(int argc, char **argv)
     snprintf(sample.title, sizeof(sample.title), "Тестовая музыка");
     snprintf(sample.filename, sizeof(sample.filename), "Альбом/песня.flac");
     snprintf(sample.volume, sizeof(sample.volume), "Volume: 65%%");
+    snprintf(sample.notification, sizeof(sample.notification), "USB-накопитель подключён: Музыка");
+    sample.notification_until = lv_tick_get() / 1000.0 + 5;
     // A real PNG file exercises the same LVGL decoder/filesystem as artwork.
     static const unsigned char png[] = {
         0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a,0,0,0,0x0d,0x49,0x48,0x44,0x52,
@@ -240,12 +255,56 @@ int main(int argc, char **argv)
     assert(!lv_obj_has_flag(objects.main_volume_osd, LV_OBJ_FLAG_HIDDEN));
     assert(lv_bar_get_value(objects.main_volume_osd__notify_progress_bar_volume) == 65);
     assert(strcmp(lv_label_get_text(objects.main_volume_osd__notify_text_volume_value_label), "65%") == 0);
+    assert(lv_obj_has_flag(objects.main_notification_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_y(objects.main_notification_osd) == 0);
+    assert(lv_obj_get_y(objects.main_volume_osd) == 0);
+    assert(strcmp(lv_label_get_text(objects.main_notification_osd__notify_text_label), sample.notification) == 0);
     snapshot(argc > 1 ? argv[1] : nullptr, "volume");
     sample.volume_until = lv_tick_get() / 1000.0 + 5;
     tick(4900);
     assert(!lv_obj_has_flag(objects.main_volume_osd, LV_OBJ_FLAG_HIDDEN));
     tick(200);
     assert(lv_obj_has_flag(objects.main_volume_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(objects.main_notification_osd, LV_OBJ_FLAG_HIDDEN));
+    snprintf(sample.notification, sizeof(sample.notification), "Bluetooth подключён: Телефон");
+    sample.notification_until = lv_tick_get() / 1000.0 + 5;
+    tick(200);
+    assert(!lv_obj_has_flag(objects.main_notification_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_y(objects.main_notification_osd) == 0);
+    snapshot(argc > 1 ? argv[1] : nullptr, "notification");
+    // Volume temporarily covers a live notice; its original deadline is unchanged.
+    const double notification_deadline = sample.notification_until;
+    sample.volume_until = lv_tick_get() / 1000.0 + 1;
+    tick(200);
+    assert(!lv_obj_has_flag(objects.main_volume_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(objects.main_notification_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_y(objects.main_notification_osd) == 0);
+    tick(1000);
+    assert(lv_obj_has_flag(objects.main_volume_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(!lv_obj_has_flag(objects.main_notification_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(sample.notification_until == notification_deadline);
+    eez_flow_set_screen(SCREEN_ID_PLAYER_SCREEN, LV_SCREEN_LOAD_ANIM_OVER_LEFT, 300, 0);
+    tick();
+    assert(!lv_obj_has_flag(objects.player_notification_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(strcmp(lv_label_get_text(objects.player_notification_osd__notify_text_label), sample.notification) == 0);
+    sample.volume_until = lv_tick_get() / 1000.0 + 1;
+    tick(200);
+    assert(!lv_obj_has_flag(objects.player_volume_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(objects.player_notification_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_y(objects.player_notification_osd) == 0);
+    assert(lv_obj_get_y(objects.player_volume_osd) == 0);
+    eez_flow_set_screen(SCREEN_ID_WIFI_SCREEN, LV_SCREEN_LOAD_ANIM_OVER_LEFT, 300, 0);
+    tick();
+    assert(!lv_obj_has_flag(objects.wifi_volume_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_has_flag(objects.wifi_notification_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_y(objects.wifi_notification_osd) == 0);
+    assert(lv_obj_get_y(objects.wifi_volume_osd) == 0);
+    assert(strcmp(lv_label_get_text(objects.wifi_notification_osd__notify_text_label), sample.notification) == 0);
+    tick(600);
+    assert(lv_obj_has_flag(objects.wifi_volume_osd, LV_OBJ_FLAG_HIDDEN));
+    assert(!lv_obj_has_flag(objects.wifi_notification_osd, LV_OBJ_FLAG_HIDDEN));
+    tick(5200);
+    assert(lv_obj_has_flag(objects.wifi_notification_osd, LV_OBJ_FLAG_HIDDEN));
     unlink(art_path);
-    puts("EEZ Flow: tabs, fonts, clock, motion, seek/track identity, storage and password bindings OK");
+    puts("EEZ Flow: FreeType Cyrillic, all-screen notices, volume, tabs, clock, motion and playback OK");
 }

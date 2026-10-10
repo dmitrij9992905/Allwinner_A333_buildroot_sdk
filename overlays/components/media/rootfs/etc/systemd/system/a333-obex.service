@@ -8,7 +8,9 @@ Before=a333-media-backend.service
 Type=dbus
 BusName=org.bluez.obex
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
-ExecStart=/usr/libexec/bluetooth/obexd --nodetach --noplugin=opp,ftp,pbap,mas,mns,irmc,syncevolution,pcsuite
+# BlueZ 5.79 requires a server driver even for its Cover Art client.
+# Keep only OPP and its transport/filesystem; do not enable --auto-accept.
+ExecStart=/usr/libexec/bluetooth/obexd --nodetach --plugin=bluetooth,filesystem,opp
 Restart=on-failure
 RestartSec=3
 

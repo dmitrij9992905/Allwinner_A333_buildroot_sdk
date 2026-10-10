@@ -17,6 +17,10 @@ typedef struct {
     double position, duration;
     bool seekable, usb_available, sd_available;
     char track_id[64], cover_path[1024];
+    char notification[1024];
+    unsigned long notification_sequence;
+    double notification_until;
+    bool notification_visible;
 } media_backend_state_t;
 
 void media_backend_init(media_backend_state_t *state);

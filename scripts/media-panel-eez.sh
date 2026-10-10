@@ -50,7 +50,8 @@ if [[ $action == generate ]]; then
         echo "EEZ generation failed; see $temporary/build.log" >&2; exit 1
     fi
     # The CLI may omit uncached font source files. Export those using Studio's
-    # bundled source writer; do not change Studio or load binary fonts at runtime.
+    # bundled source writer for preview/layout metrics. Firmware renders the
+    # copied TTF through FreeType, without linking these bitmap glyph tables.
     ELECTRON_RUN_AS_NODE=1 "$studio" "$sdk_dir/scripts/media-panel-eez-fonts.cjs" \
         "$project" "$(dirname -- "$studio")/resources"
 fi

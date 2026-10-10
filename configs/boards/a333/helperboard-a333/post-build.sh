@@ -121,6 +121,9 @@ if [ "$PROFILE" = media ]; then
 	fi
 	install -d -m 0755 "$OEM_ROOT/usr/bin"
 	install -m 0755 "$MEDIA_PANEL_BINARY" "$OEM_ROOT/usr/bin/media-panel"
+	install -d -m 0755 "$OEM_ROOT/usr/share/media-panel/fonts"
+	install -m 0644 "$PROJECT_ROOT/oem/a333/src/media-panel/assets/fonts/SkodaPro-Medium.ttf" \
+		"$OEM_ROOT/usr/share/media-panel/fonts/SkodaPro-Medium.ttf"
 	rm -f "$TARGET_DIR/usr/bin/media-panel"
 	install -d -m 0755 "$TARGET_DIR/etc/systemd/system/multi-user.target.wants"
 	# Upstream defaults start another org.bluealsa owner and another ALSA

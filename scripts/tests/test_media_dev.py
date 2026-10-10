@@ -67,7 +67,8 @@ class DevelopmentCommandsTest(unittest.TestCase):
     def test_g2d_diagnostics_are_forwarded_to_target(self):
         result, command = self.run_command("run", A333_DEV_RENDERER="g2d", A333_DEV_PANEL_PROFILE="1")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("export A333_PANEL_RENDERER=g2d A333_PANEL_PROFILE=1;", command)
+        self.assertIn("export A333_PANEL_RENDERER=g2d A333_PANEL_PROFILE=1 ", command)
+        self.assertIn("A333_MEDIA_FONT=/userdata/dev/media-panel/SkodaPro-Medium.ttf;", command)
 
     def test_renderer_shell_injection_rejected(self):
         result, command = self.run_command("run", A333_DEV_RENDERER="auto;bad")

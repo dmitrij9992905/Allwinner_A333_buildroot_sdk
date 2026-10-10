@@ -2,6 +2,7 @@
 set -euo pipefail
 
 project_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+invocation=("$@")
 usage() {
     printf 'Usage: %s list | <profile> [configure|build|clean|menuconfig|savedefconfig] [make arguments...]\n' "$0"
 }
@@ -91,6 +92,31 @@ case "$action" in
     configure|build|clean|menuconfig|savedefconfig) ;;
     *) usage; exit 2 ;;
 esac
+
+interactive_config=0
+for target in "$action" "$@"; do
+    case "$target" in
+        menuconfig|nconfig|*-menuconfig|*-nconfig) interactive_config=1 ;;
+    esac
+done
+if [[ $interactive_config == 1 && ( ! -t 0 || ! -t 1 ) ]]; then
+    echo "Interactive configuration requires a terminal for stdin and stdout; run without pipes/redirection (use ssh -t for remote sessions)." >&2
+    exit 2
+fi
+
+build_context=host
+if [[ ${A333_DOCKER_BUILD:-0} == 1 || ( -f /.dockerenv && $project_dir == /workspace ) ]]; then
+    build_context=container
+fi
+if [[ $build_context == container ]]; then
+    echo "build.sh: $profile / $action — using the current build container" >&2
+else
+    echo "build.sh: $profile / $action — running in Docker via docker-build.sh" >&2
+    # Run the entire workflow in one container, not a new container per make
+    # call. Configuration migration, cleanup and stamp updates use the same
+    # environment as the requested build/configurator.
+    exec "$project_dir/docker-build.sh" /workspace/build.sh "${invocation[@]}"
+fi
 if [[ $action != clean && -f $selection_file &&
       $(<"$selection_file") != "$overlay_selection" &&
       -d $project_dir/$OUTPUT_DIR/target ]]; then
@@ -101,22 +127,15 @@ fi
 make_args=("O=../$OUTPUT_DIR" "BR2_EXTERNAL=../configs")
 export A333_RAUC_BUNDLE_NAME
 run_make() {
-    if [[ -f /.dockerenv && $project_dir == /workspace ]]; then
-        (
-            cd "$project_dir/buildroot"
-            env "A333_RAUC_BUNDLE_NAME=$A333_RAUC_BUNDLE_NAME" \
-                "A333_OEM_OVERLAYS=$oem_overlay_list" \
-                "${PROFILE_ENV[@]}" make "${make_args[@]}" \
-                "BR2_ROOTFS_OVERLAY=$rootfs_overlay_list" "$@"
-        )
-    else
-        "$project_dir/docker-build.sh" env \
+    (
+        cd "$project_dir/buildroot"
+        env \
             "A333_RAUC_BUNDLE_NAME=$A333_RAUC_BUNDLE_NAME" \
             "A333_OEM_OVERLAYS=$oem_overlay_list" \
             "${PROFILE_ENV[@]}" \
             make "${make_args[@]}" \
             "BR2_ROOTFS_OVERLAY=$rootfs_overlay_list" "$@"
-    fi
+    )
 }
 invalidate_package_config() {
     # Buildroot does not automatically reconfigure packages when fragment
@@ -181,7 +200,7 @@ if [[ $action == clean ]]; then
     fi
     exit 0
 fi
-if [[ $action == configure || ( $action == build && ! -f $project_dir/$OUTPUT_DIR/.config ) ]]; then
+if [[ $action == configure || ! -f $project_dir/$OUTPUT_DIR/.config ]]; then
     run_make "$DEFCONFIG"
 fi
 sync_profile_config

@@ -67,9 +67,10 @@ class LoggingTest(unittest.TestCase):
             for directory in ("configs", "profiles", "overlays", "oem"):
                 (root / directory).symlink_to(ROOT / directory, target_is_directory=True)
             shutil.copy2(ROOT / "build.sh", root / "build.sh")
-            docker = root / "docker-build.sh"
-            docker.write_text('#!/bin/sh\nprintf "%s\\n" "$@" >> "$LOG_PATH"\n')
-            docker.chmod(0o755)
+            (root / "buildroot").mkdir()
+            make = root / "make"
+            make.write_text('#!/bin/sh\nprintf "%s\\n" "$@" >> "$LOG_PATH"\n')
+            make.chmod(0o755)
             out = root / "output/profiles/media"
             out.mkdir(parents=True)
             contents = (ROOT / "configs/configs/a333_media_defconfig").read_text().replace(
@@ -86,7 +87,8 @@ class LoggingTest(unittest.TestCase):
             (uboot / "object.o").write_text("preserve compiled files")
             log = root / "calls.log"
             subprocess.run(["bash", str(root / "build.sh"), "media", "build"], check=True,
-                           env={**os.environ, "LOG_PATH": str(log)})
+                           env={**os.environ, "LOG_PATH": str(log),
+                                "A333_DOCKER_BUILD": "1", "PATH": str(root) + ":" + os.environ['PATH']})
             self.assertIn("linux-quiet-logs.fragment", (out / ".config").read_text())
             self.assertIn("# BR2_A333_KERNEL_DEBUG_LOGS is not set", (out / ".config").read_text())
             self.assertFalse((linux / ".stamp_built").exists())

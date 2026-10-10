@@ -40,7 +40,7 @@ class BackendStatusTest(unittest.IsolatedAsyncioTestCase):
         lines = await self.status('Альбом/песня.flac\n\nИсполнитель\nАльбом')
         self.assertEqual(lines[:4], ['Music / radio', 'песня.flac', 'Исполнитель', 'Альбом'])
         self.assertEqual(lines[6], 'Альбом/песня.flac')
-        self.assertEqual(len(lines), 13)
+        self.assertEqual(len(lines), 15)
 
     async def test_tags_and_radio_uri(self):
         lines = await self.status('https://radio.test/live\nRadio title\nArtist\nAlbum')
@@ -64,7 +64,9 @@ class State(ctypes.Structure):
         ('volume_visible', ctypes.c_bool), ('position', ctypes.c_double),
         ('duration', ctypes.c_double), ('seekable', ctypes.c_bool),
         ('usb_available', ctypes.c_bool), ('sd_available', ctypes.c_bool),
-        ('track_id', ctypes.c_char * 64), ('cover_path', ctypes.c_char * 1024)]
+        ('track_id', ctypes.c_char * 64), ('cover_path', ctypes.c_char * 1024),
+        ('notification', ctypes.c_char * 1024), ('notification_sequence', ctypes.c_ulong),
+        ('notification_until', ctypes.c_double), ('notification_visible', ctypes.c_bool)]
 
 
 @unittest.skipUnless(shutil.which('cc'), 'native C compiler is required')
@@ -133,6 +135,28 @@ class MediaBackendTest(unittest.TestCase):
         self.path.unlink()
         self.assertFalse(self.lib.media_backend_poll(ctypes.byref(self.state), bytes(self.path), 16))
         self.assertFalse(self.state.volume_visible)
+
+    def test_notifications_coexist_with_volume_and_expire(self):
+        snapshot = 'Music\nTrack\nArtist\nAlbum\nVolume: 40%\n1\nfile.flac\n0\n120\n1\n7\n\n1 0\nUSB подключён\n2\n'
+        self.assertTrue(self.poll(snapshot, 10))
+        self.assertEqual(self.state.notification.decode(), 'USB подключён')
+        self.assertTrue(self.state.notification_visible)
+        self.assertTrue(self.state.volume_visible)
+        self.assertTrue(self.state.seekable)
+        self.assertTrue(self.poll(snapshot, 14.9))
+        self.assertEqual(self.state.notification_until, 15)
+        self.assertTrue(self.poll(snapshot.replace('USB подключён\n2', 'USB отключён\n3'), 14.9))
+        self.assertAlmostEqual(self.state.notification_until, 19.9)
+        self.path.unlink()
+        self.assertFalse(self.lib.media_backend_poll(ctypes.byref(self.state), bytes(self.path), 20))
+        self.assertFalse(self.state.notification_visible)
+
+    def test_incomplete_notification_extension_keeps_previous_snapshot(self):
+        snapshot = 'Music\nTrack\nArtist\nAlbum\n\n0\nfile\n0\n0\n0\n\n\n0 0\n'
+        self.assertTrue(self.poll(snapshot))
+        self.assertFalse(self.poll(snapshot + 'USB подключён\n'))
+        self.assertFalse(self.poll(snapshot + 'USB подключён\n-1\n'))
+        self.assertEqual(self.state.title, b'Track')
 
     def test_socket_allowlist_and_json_are_nonblocking(self):
         path = str(Path(self.directory.name) / 'control.sock')

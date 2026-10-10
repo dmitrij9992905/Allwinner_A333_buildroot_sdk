@@ -90,7 +90,7 @@ def migrate(project):
                 parent['children'].remove(label)
                 break
         playing['children'].append(label)
-    label.update(left=0, top=-27, width=160, height=29, widthUnit='px', heightUnit='px')
+        label.update(left=0, top=-27, width=160, height=29, widthUnit='px', heightUnit='px')
     label['localStyles'].setdefault('definition', {}).setdefault('MAIN', {}).setdefault('DEFAULT', {}).update(
         align='BOTTOM_RIGHT', text_align='RIGHT')
     if not any(c['source'] == bar['objID'] and c['output'] == 'RELEASED'
