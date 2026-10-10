@@ -2,6 +2,7 @@
 """Bridge BlueZ AVRCP metadata and MPD controls to the local touch panel."""
 
 import asyncio
+import json
 import logging
 import os
 import re
@@ -14,6 +15,8 @@ from pathlib import Path
 from dbus_next import BusType, Message, MessageType, Variant
 from dbus_next.aio import MessageBus
 from a333_media_network import NetworkController
+from a333_media_playback import PlaybackController, prepare_library, seconds
+from a333_media_bt_artwork import BluetoothArtwork
 
 RUN = Path("/run/a333-media")
 SOCKET = RUN / "control.sock"
@@ -152,10 +155,16 @@ async def bt_track(bus):
     fields = track.value if track else {}
     metadata = {name: fields.get(name).value if fields.get(name) else ""
                 for name in ("Title", "Artist", "Album")}
+    metadata['Duration'] = fields.get('Duration').value if fields.get('Duration') else 0
+    metadata['Position'] = player.get('Position').value if player.get('Position') else 0
     return path, player.get("Status").value if player.get("Status") else "", metadata
 
 
 async def update_status(bus, current):
+    filename = ""
+    playback = current.get('playback')
+    snapshot = await playback.poll() if playback else {}
+    position, duration, token, seekable = 0, 0, '', False
     try:
         bluetooth = await bt_track(bus)
     except Exception as error:
@@ -173,21 +182,43 @@ async def update_status(bus, current):
         current["bt_status"] = bluetooth[1]
         lines = ["Bluetooth", metadata["Title"] or "Bluetooth audio",
                  metadata["Artist"], metadata["Album"]]
+        position = seconds(metadata.get('Position', 0) / 1000)
+        duration = seconds(metadata.get('Duration', 0) / 1000)
+        if playback and current.get('bt_artwork'):
+            key = 'bt:' + bluetooth[0] + ':' + '|'.join(lines[1:])
+            playback.request_cover(key, loader=lambda: current['bt_artwork'].picture(bluetooth[0]))
     else:
         current["source"] = "MPD"
         current["player"] = None
         current["bt_status"] = ""
-        detail = await run_mpc("--format", "%title%\n%artist%\n%album%", "current") or ""
+        # File comes first so run_mpc's strip() cannot shift empty tags.
+        detail = await run_mpc("--format", "%file%\n%title%\n%artist%\n%album%", "current") or ""
         fields = detail.splitlines()
-        lines = [current.get("mode", "Music / radio"), fields[0] if fields else "Ready",
-                 fields[1] if len(fields) > 1 else "",
-                 fields[2] if len(fields) > 2 else ""]
+        filename = fields[0] if fields else ""
+        lines = [current.get("mode", "Music / radio"),
+                 fields[1] if len(fields) > 1 and fields[1] else filename.rsplit("/", 1)[-1] or "Ready",
+                 fields[2] if len(fields) > 2 else "",
+                 fields[3] if len(fields) > 3 else ""]
+        if snapshot:
+            filename = snapshot.get('file', filename)
+            position, duration = snapshot['elapsed'], snapshot['duration']
+            token, seekable = snapshot['token'], snapshot['seekable']
+        if playback:
+            # Reusing sda1 with another drive must not reuse the old album art.
+            revision = ':' + str(playback.storage_revision) if filename.startswith(('usb/', 'sd/')) else ''
+            playback.request_cover('mpd:' + filename + revision if filename else '', filename)
     if time.monotonic() < current.get("notice_until", 0):
         lines[0] = current["notice"]
     volume_osd = current.get("volume_osd", "")
     if time.monotonic() >= current.get("volume_osd_until", 0):
         volume_osd = ""
     lines.extend((volume_osd, str(current.get("volume_seq", 0))))
+    # Append only: old UI builds still understand the first six lines.
+    lines.append(filename)
+    lines.extend(('%.3f' % position, '%.3f' % duration, '1' if seekable else '0', token,
+                  playback.cover_path if playback else '',
+                  '%d %d' % (bool(playback and playback.available('usb')),
+                              bool(playback and playback.available('sd')))))
     temporary = RUN / "status.new"
     temporary.write_text("\n".join(map(clean, lines)) + "\n", encoding="utf-8")
     os.replace(temporary, RUN / "status")
@@ -235,26 +266,31 @@ async def handle(bus, current, command):
         logging.warning("No radio URL in %s", RADIO)
         show_notice(current, "No radio URL in /userdata/media/radio.m3u")
         return
-    if command == "music":
+    if command in ("music", "usb", "sd"):
+        library = {'music': 'local', 'usb': 'usb', 'sd': 'sd'}[command]
+        if command != 'music' and not current['playback'].available(command):
+            show_notice(current, 'No %s storage connected' % command.upper())
+            return
         # MPD's database and its play queue are separate. An empty queue is
         # not populated by 'play', even when music_directory has files.
-        if await run_mpc("update", "--wait", timeout=60) is None:
+        if await run_mpc("update", library, "--wait", timeout=60) is None:
             show_notice(current, "MPD update failed; see journal")
             return
         if await run_mpc("clear") is None:
             show_notice(current, "Could not clear MPD queue")
             return
-        if await run_mpc("add", "/", timeout=30) is None:
+        if await run_mpc("add", library, timeout=30) is None:
             show_notice(current, "Could not queue music; see journal")
             return
         queue_length = await run_mpc("status", "%length%")
         if not queue_length or queue_length == "0":
-            show_notice(current, "No supported music in /userdata/media/music")
+            show_notice(current, "No supported music in " +
+                        {'music': '/userdata/media/music', 'usb': '/media/usb', 'sd': '/media/sd'}[command])
             return
         if await run_mpc("play") is None:
             show_notice(current, "MPD cannot play; check audio and journal")
             return
-        current["mode"] = "Local music"
+        current["mode"] = {'music': 'Local music', 'usb': 'USB music', 'sd': 'SD music'}[command]
         return
     if command not in ("previous", "next", "toggle"):
         return
@@ -278,8 +314,11 @@ async def main():
     control.setblocking(False)
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
     network = NetworkController(RUN, bus)
+    prepare_library()
     current = {"source": "MPD", "player": None, "bt_status": "",
                "mode": "Music / radio", "volume_seq": 0}
+    current['playback'] = PlaybackController(RUN)
+    current['bt_artwork'] = BluetoothArtwork(bus, current['playback'].cover_dir)
     loop = asyncio.get_running_loop()
 
     async def poll():
@@ -297,6 +336,16 @@ async def main():
         message = await loop.sock_recv(control, 4096)
         try:
             if message.startswith(b"{"):
+                request = json.loads(message)
+                if request.get('command') == 'seek':
+                    try:
+                        await current['playback'].seek(request, current['source'])
+                    except (OSError, ValueError) as error:
+                        logging.warning('Seek rejected: %s', error)
+                    continue
+                if request.get('command') == 'storage_changed':
+                    await current['playback'].refresh_storage()
+                    continue
                 network.handle(message)
                 continue
             await handle(bus, current, message.decode("ascii"))

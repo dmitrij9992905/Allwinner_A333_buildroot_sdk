@@ -89,3 +89,16 @@ CONFIG_BT_HCIUART_H4=y
 
 # dmx-panel owns the framebuffer; no kernel text console on the LCD
 # CONFIG_FRAMEBUFFER_CONSOLE is not set
+
+# Removable USB/SD media; do not rely on modules being loaded after hotplug.
+CONFIG_SCSI=y
+CONFIG_BLK_DEV_SD=y
+CONFIG_USB_STORAGE=y
+CONFIG_USB_UAS=y
+CONFIG_FAT_FS=y
+CONFIG_VFAT_FS=y
+CONFIG_EXFAT_FS=y
+CONFIG_NTFS3_FS=y
+CONFIG_NLS_CODEPAGE_437=y
+CONFIG_NLS_ISO8859_1=y
+CONFIG_NLS_UTF8=y

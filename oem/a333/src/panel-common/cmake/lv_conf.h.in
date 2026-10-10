@@ -2,6 +2,18 @@
 #include "panel_common_base_lv_conf.h"
 #cmakedefine01 PANEL_COMMON_EEZ_FONTS
 #cmakedefine01 PANEL_COMMON_EEZ_WIDGETS
+#cmakedefine01 PANEL_COMMON_ARTWORK
+#if PANEL_COMMON_ARTWORK
+#undef LV_USE_LODEPNG
+#undef LV_USE_TJPGD
+#undef LV_USE_FS_STDIO
+#define LV_USE_LODEPNG 1
+#define LV_USE_TJPGD 1
+#define LV_USE_FS_STDIO 1
+#define LV_FS_STDIO_LETTER 'A'
+#define LV_FS_STDIO_PATH ""
+#define LV_FS_STDIO_CACHE_SIZE 0
+#endif
 #if PANEL_COMMON_EEZ_WIDGETS
 #undef LV_USE_DROPDOWN
 #undef LV_USE_KEYBOARD

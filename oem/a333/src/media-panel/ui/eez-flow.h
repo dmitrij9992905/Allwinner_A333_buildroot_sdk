@@ -72,7 +72,7 @@
     #define DIAG_PRAGMA(x) __pragma(x)
     #define DIAG_PUSH      DIAG_PRAGMA(warning(push))
     #define DIAG_POP       DIAG_PRAGMA(warning(pop))
-    #define DIAG_IGNORE(w) 
+    #define DIAG_IGNORE(w)
 #else
     #define DIAG_PUSH
     #define DIAG_POP
@@ -141,7 +141,7 @@ Unit findDerivedUnit(float value, Unit unit);
 Unit getSmallerUnit(Unit unit, float min, float precision);
 Unit getBiggestUnit(Unit unit, float max);
 Unit getSmallestUnit(Unit unit, float min, float precision);
-} 
+}
 // -----------------------------------------------------------------------------
 // core/value_types.h
 // -----------------------------------------------------------------------------
@@ -216,7 +216,7 @@ template<class T> struct ObjectAllocator {
 	}
 };
 void getAllocInfo(uint32_t &free, uint32_t &alloc);
-} 
+}
 // -----------------------------------------------------------------------------
 // flow/flow_defs_v3.h
 // -----------------------------------------------------------------------------
@@ -856,9 +856,9 @@ enum ArrayTypes {
     ARRAY_TYPE_EVENT = 65573,
     ARRAY_TYPE_ANY = 15
 };
-} 
-} 
-} 
+}
+}
+}
 // -----------------------------------------------------------------------------
 // core/value.h
 // -----------------------------------------------------------------------------
@@ -1041,7 +1041,7 @@ struct Value {
             memcpy((void *)&int64Value, (const void *)&value.int64Value, sizeof(int64_t));
             if (options & VALUE_OPTIONS_REF) {
                 refValue->refCounter++;
-            } 
+            }
         }
         return *this;
     }
@@ -1457,20 +1457,20 @@ struct ArrayOfString {
         value.getArray()->values[position] = Value(stringValue, VALUE_TYPE_STRING);
     }
 };
-} 
+}
 // -----------------------------------------------------------------------------
 // core/action.h
 // -----------------------------------------------------------------------------
 namespace eez {
 void executeActionFunction(int actionId);
-} 
+}
 // -----------------------------------------------------------------------------
 // core/assets.h
 // -----------------------------------------------------------------------------
 #include <stdint.h>
 namespace eez {
-static const uint32_t HEADER_TAG = 0x5A45457E; 
-static const uint32_t HEADER_TAG_COMPRESSED = 0x7A65657E; 
+static const uint32_t HEADER_TAG = 0x5A45457E;
+static const uint32_t HEADER_TAG_COMPRESSED = 0x7A65657E;
 static const uint8_t PROJECT_VERSION_V2 = 2;
 static const uint8_t PROJECT_VERSION_V3 = 3;
 static const uint8_t ASSETS_TYPE_FIRMWARE = 1;
@@ -1479,7 +1479,7 @@ static const uint8_t ASSETS_TYPE_RESOURCE = 3;
 static const uint8_t ASSETS_TYPE_APPLET = 4;
 static const uint8_t ASSETS_TYPE_DASHBOARD = 5;
 struct Header {
-	uint32_t tag; 
+	uint32_t tag;
 	uint8_t projectMajorVersion;
 	uint8_t projectMinorVersion;
 	uint8_t assetsType;
@@ -1634,7 +1634,7 @@ const char *getThemeName(int i);
 uint32_t getThemeColorsCount(int themeIndex);
 const uint16_t *getThemeColors(int themeIndex);
 const uint16_t *getColors();
-} 
+}
 // -----------------------------------------------------------------------------
 // core/debug.h
 // -----------------------------------------------------------------------------
@@ -1652,12 +1652,12 @@ enum TraceType {
     TRACE_TYPE_ERROR
 };
 void Trace(TraceType traceType, const char *format, ...);
-} 
-} 
+}
+}
 #define InfoTrace(...) ::eez::debug::Trace(::eez::debug::TRACE_TYPE_INFO, __VA_ARGS__)
 #define ErrorTrace(...) ::eez::debug::Trace(::eez::debug::TRACE_TYPE_ERROR, __VA_ARGS__)
 #define DebugTrace(...) ::eez::debug::Trace(::eez::debug::TRACE_TYPE_DEBUG, __VA_ARGS__)
-#else 
+#else
 #define InfoTrace(...) (void)0
 #define ErrorTrace(...) (void)0
 #define DebugTrace(...) (void)0
@@ -1694,7 +1694,7 @@ uint32_t millis();
 extern bool g_shutdown;
 #endif
 void shutdown();
-} 
+}
 // -----------------------------------------------------------------------------
 // core/memory.h
 // -----------------------------------------------------------------------------
@@ -1715,7 +1715,7 @@ void initMemory();
 void initAssetsMemory();
 void initOtherMemory();
 uint8_t *allocBuffer(uint32_t size);
-} 
+}
 // -----------------------------------------------------------------------------
 // core/utf8.h
 // -----------------------------------------------------------------------------
@@ -1883,7 +1883,7 @@ private:
     uint64_t m_numSamples{0};
     Total m_total{0};
 };
-} 
+}
 // -----------------------------------------------------------------------------
 // flow/private.h
 // -----------------------------------------------------------------------------
@@ -1963,8 +1963,8 @@ T *allocateComponentExecutionState(FlowState *flowState, unsigned componentIndex
 }
 void resetSequenceInputs(FlowState *flowState);
 void propagateValue(FlowState *flowState, unsigned componentIndex, unsigned outputIndex, const Value &value);
-void propagateValue(FlowState *flowState, unsigned componentIndex, unsigned outputIndex); 
-void propagateValueThroughSeqout(FlowState *flowState, unsigned componentIndex); 
+void propagateValue(FlowState *flowState, unsigned componentIndex, unsigned outputIndex);
+void propagateValueThroughSeqout(FlowState *flowState, unsigned componentIndex);
 void assignValue(FlowState *flowState, int componentIndex, Value &dstValue, const Value &srcValue);
 void clearInputValue(FlowState *flowState, int inputIndex);
 void startAsyncExecution(FlowState *flowState, int componentIndex);
@@ -2041,7 +2041,7 @@ struct FlowError {
         return FlowError(type, messagePart1, messagePart2, messagePart3, messagePartInt, description_, file, line);
     }
     const char *getMessage(char *messageStr, size_t messageStrLength, int flowIndex, int componentIndex) const;
-private: 
+private:
     FlowErrorType type;
     const char *messagePart1;
     const char *messagePart2;
@@ -2068,8 +2068,8 @@ private:
 void throwError(FlowState *flowState, int componentIndex, const char *errorMessage);
 void throwError(FlowState *flowState, int componentIndex, const FlowError &error);
 void enableThrowError(bool enable);
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/components.h
 // -----------------------------------------------------------------------------
@@ -2080,8 +2080,8 @@ typedef void (*ExecuteComponentFunctionType)(FlowState *flowState, unsigned comp
 void registerComponent(ComponentTypes componentType, ExecuteComponentFunctionType executeComponentFunction);
 void executeComponent(FlowState *flowState, unsigned componentIndex);
 bool hasExecFunc(FlowState *flowState, unsigned componentIndex);
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/date.h
 // -----------------------------------------------------------------------------
@@ -2110,9 +2110,9 @@ int getSeconds(Date time);
 int getMilliseconds(Date time);
 Date utcToLocal(Date utc);
 Date localToUtc(Date local);
-} 
-} 
-} 
+}
+}
+}
 // -----------------------------------------------------------------------------
 // flow/debugger.h
 // -----------------------------------------------------------------------------
@@ -2142,8 +2142,8 @@ void logScpiQuery(FlowState *flowState, unsigned componentIndex, const char *que
 void logScpiQueryResult(FlowState *flowState, unsigned componentIndex, const char *resultText, size_t resultTextLen);
 void onPageChanged(int previousPageId, int activePageId, bool activePageIsFromStack = false, bool previousPageIsStillOnStack = false);
 void processDebuggerInput(char *buffer, uint32_t length);
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/expression.h
 // -----------------------------------------------------------------------------
@@ -2189,8 +2189,8 @@ bool evalExpression(FlowState *flowState, int componentIndex, const uint8_t *ins
 bool evalAssignableExpression(FlowState *flowState, int componentIndex, const uint8_t *instructions, Value &result, const FlowError &errorMessage, int *numInstructionBytes = nullptr, const int32_t *iterators = nullptr);
 bool evalProperty(FlowState *flowState, int componentIndex, int propertyIndex, Value &result, const FlowError &errorMessage, int *numInstructionBytes = nullptr, const int32_t *iterators = nullptr);
 bool evalAssignableProperty(FlowState *flowState, int componentIndex, int propertyIndex, Value &result, const FlowError &errorMessage, int *numInstructionBytes = nullptr, const int32_t *iterators = nullptr);
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/flow.h
 // -----------------------------------------------------------------------------
@@ -2230,8 +2230,8 @@ void onArrayValueFree(ArrayValue *arrayValue);
 void onFreeMQTTConnection(ArrayValue *mqttConnectionValue);
 void executeScpi();
 void flushToDebuggerMessage();
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/hooks.h
 // -----------------------------------------------------------------------------
@@ -2263,8 +2263,8 @@ extern void (*lvglObjRemoveStyleHook)(lv_obj_t *object, int32_t styleIndex);
 extern void (*lvglSetColorThemeHook)(const char *themeName);
 extern double (*getDateNowHook)();
 extern void (*onFlowErrorHook)(FlowState *flowState, int componentIndex, const char *errorMessage);
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/operations.h
 // -----------------------------------------------------------------------------
@@ -2288,8 +2288,8 @@ Value op_less(const Value& a1, const Value& b1);
 Value op_great(const Value& a1, const Value& b1);
 Value op_less_eq(const Value& a1, const Value& b1);
 Value op_great_eq(const Value& a1, const Value& b1);
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/queue.h
 // -----------------------------------------------------------------------------
@@ -2306,8 +2306,8 @@ bool peekNextTaskFromQueue(FlowState *&flowState, unsigned &componentIndex, bool
 void removeNextTaskFromQueue();
 bool isInQueue(FlowState *flowState, unsigned componentIndex);
 void removeTasksFromQueueForFlowState(FlowState *flowState);
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/watch_list.h
 // -----------------------------------------------------------------------------
@@ -2320,8 +2320,8 @@ void visitWatchList();
 void watchListReset();
 void removeWatchesForFlowState(FlowState *flowState);
 unsigned getWatchListSize();
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/components/call_action.h
 // -----------------------------------------------------------------------------
@@ -2332,8 +2332,8 @@ struct CallActionActionComponent : public Component {
 	uint8_t inputsStartIndex;
 	uint8_t outputsStartIndex;
 };
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/components/input.h
 // -----------------------------------------------------------------------------
@@ -2346,8 +2346,8 @@ struct InputActionComponentExecutionState : public ComponenentExecutionState {
 	Value value;
 };
 bool getCallActionValue(FlowState *flowState, unsigned componentIndex, Value &value);
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/components/lvgl.h
 // -----------------------------------------------------------------------------
@@ -2445,8 +2445,8 @@ struct LVGLApiComponent_ActionType {
 struct LVGLApiComponent : public Component {
     ListOfAssetsPtr<LVGLApiComponent_ActionType> actions;
 };
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/components/lvgl_user_widget.h
 // -----------------------------------------------------------------------------
@@ -2459,8 +2459,8 @@ struct LVGLUserWidgetExecutionState : public ComponenentExecutionState {
     }
 };
 LVGLUserWidgetExecutionState *createUserWidgetFlowState(FlowState *flowState, unsigned userWidgetWidgetComponentIndex);
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/components/mqtt.h
 // -----------------------------------------------------------------------------
@@ -2478,14 +2478,14 @@ int eez_mqtt_subscribe(void *handle, const char *topic);
 int eez_mqtt_unsubscribe(void *handle, const char *topic);
 int eez_mqtt_publish(void *handle, const char *topic, const char *payload);
 typedef enum {
-    EEZ_MQTT_EVENT_CONNECT = 0, 
-    EEZ_MQTT_EVENT_RECONNECT = 1, 
-    EEZ_MQTT_EVENT_CLOSE = 2, 
-    EEZ_MQTT_EVENT_DISCONNECT = 3, 
-    EEZ_MQTT_EVENT_OFFLINE = 4, 
-    EEZ_MQTT_EVENT_END = 5, 
-    EEZ_MQTT_EVENT_ERROR = 6, 
-    EEZ_MQTT_EVENT_MESSAGE = 7 
+    EEZ_MQTT_EVENT_CONNECT = 0,
+    EEZ_MQTT_EVENT_RECONNECT = 1,
+    EEZ_MQTT_EVENT_CLOSE = 2,
+    EEZ_MQTT_EVENT_DISCONNECT = 3,
+    EEZ_MQTT_EVENT_OFFLINE = 4,
+    EEZ_MQTT_EVENT_END = 5,
+    EEZ_MQTT_EVENT_ERROR = 6,
+    EEZ_MQTT_EVENT_MESSAGE = 7
 } EEZ_MQTT_Event;
 typedef struct {
     const char *topic;
@@ -2502,8 +2502,8 @@ namespace flow {
 struct OnEventComponent : public Component {
     uint8_t event;
 };
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/components/set_variable.h
 // -----------------------------------------------------------------------------
@@ -2516,8 +2516,8 @@ struct SetVariableEntry {
 struct SetVariableActionComponent : public Component {
     ListOfAssetsPtr<SetVariableEntry> entries;
 };
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/components/sort_array.h
 // -----------------------------------------------------------------------------
@@ -2531,8 +2531,8 @@ struct SortArrayActionComponent : public Component {
     uint32_t flags;
 };
 void sortArray(SortArrayActionComponent *component, ArrayValue *array);
-} 
-} 
+}
+}
 // -----------------------------------------------------------------------------
 // flow/components/switch.h
 // -----------------------------------------------------------------------------
@@ -2546,8 +2546,8 @@ struct SwitchTest {
 struct SwitchActionComponent : public Component {
     ListOfAssetsPtr<SwitchTest> tests;
 };
-} 
-} 
+}
+}
 #endif
 
 // -----------------------------------------------------------------------------
@@ -2575,7 +2575,7 @@ extern native_var_t native_vars[];
 #ifdef __cplusplus
 }
 #endif
-#endif 
+#endif
 // -----------------------------------------------------------------------------
 // flow/lvgl_api.h
 // -----------------------------------------------------------------------------
@@ -2642,7 +2642,7 @@ void flowPropagateValueLVGLEvent(void *flowState, unsigned componentIndex, unsig
 #define evalStringArrayPropertyAndJoin(flowState, componentIndex, propertyIndex, errorMessage, separator) _evalStringArrayPropertyAndJoin(flowState, componentIndex, propertyIndex, errorMessage, separator, __FILE__, __LINE__)
 #define assignStringProperty(flowState, componentIndex, propertyIndex, value, errorMessage) _assignStringProperty(flowState, componentIndex, propertyIndex, value, errorMessage, __FILE__, __LINE__)
 #define assignIntegerProperty(flowState, componentIndex, propertyIndex, value, errorMessage) _assignIntegerProperty(flowState, componentIndex, propertyIndex, value, errorMessage, __FILE__, __LINE__)
-#define assignBooleanProperty(flowState, componentIndex, propertyIndex, value, errorMessage) _assignBooleanProperty(flowState, componentIndex, propertyIndex, value, errorMessage, __FILE__, __LINE__) 
+#define assignBooleanProperty(flowState, componentIndex, propertyIndex, value, errorMessage) _assignBooleanProperty(flowState, componentIndex, propertyIndex, value, errorMessage, __FILE__, __LINE__)
 const char *_evalTextProperty(void *flowState, unsigned componentIndex, unsigned propertyIndex, const char *errorMessage, const char *file, int line);
 int32_t _evalIntegerProperty(void *flowState, unsigned componentIndex, unsigned propertyIndex, const char *errorMessage, const char *file, int line);
 uint32_t _evalUnsignedIntegerProperty(void *flowState, unsigned componentIndex, unsigned propertyIndex, const char *errorMessage, const char *file, int line);

@@ -49,6 +49,10 @@ if [[ $action == generate ]]; then
         grep -Eq '[1-9][0-9]* errors? .*detected|Error generating|Unhandled error' "$temporary/build.log"; then
         echo "EEZ generation failed; see $temporary/build.log" >&2; exit 1
     fi
+    # The CLI may omit uncached font source files. Export those using Studio's
+    # bundled source writer; do not change Studio or load binary fonts at runtime.
+    ELECTRON_RUN_AS_NODE=1 "$studio" "$sdk_dir/scripts/media-panel-eez-fonts.cjs" \
+        "$project" "$(dirname -- "$studio")/resources"
 fi
 for file in ui.c ui.h screens.c screens.h actions.h vars.h eez-flow.cpp eez-flow.h images.c; do
     [[ -s $generated/$file ]] || { echo "Missing generated file: $generated/$file" >&2; exit 1; }
@@ -57,6 +61,14 @@ if grep -q 'undefinedget_var_' "$generated/ui.c"; then
     echo 'Studio native array bug: use a Flow global for wifi_networks, not a native array.' >&2
     exit 1
 fi
+python3 - "$generated" <<'PY'
+from pathlib import Path
+import re, sys
+directory = Path(sys.argv[1])
+for name in re.findall(r'extern const lv_font_t (\w+);', (directory / 'fonts.h').read_text()):
+    if not (directory / (name + '.c')).is_file():
+        raise SystemExit('Missing generated font C source: ' + name + '.c')
+PY
 mkdir -p "$destination/ui" "$destination/eez"
 if [[ $generated != "$destination/ui" ]]; then
     cp -- "$generated/"*.c "$generated/"*.h "$generated/"*.cpp "$destination/ui/"
@@ -64,5 +76,7 @@ fi
 if [[ $project != "$destination/eez/lvgl-media-player.eez-project" ]]; then
     cp -- "$project" "$destination/eez/lvgl-media-player.eez-project"
 fi
+# Formatting only; Studio emits trailing blanks in otherwise generated C.
+sed -i 's/[[:blank:]]\+$//' "$destination/ui/"*.c "$destination/ui/"*.h "$destination/ui/"*.cpp
 echo "EEZ sources exported to $destination/ui"
 echo 'Next: bash scripts/media-panel-dev.sh build media'

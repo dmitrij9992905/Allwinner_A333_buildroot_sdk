@@ -15,6 +15,9 @@ extern void action_music(lv_event_t * e);
 extern void action_pair(lv_event_t * e);
 extern void action_wifi_scan(lv_event_t * e);
 extern void action_wifi_connect(lv_event_t * e);
+extern void action_seek(lv_event_t * e);
+extern void action_usb(lv_event_t * e);
+extern void action_sd(lv_event_t * e);
 
 #ifdef __cplusplus
 }

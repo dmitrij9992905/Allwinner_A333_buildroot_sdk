@@ -204,6 +204,14 @@ because Studio 0.29's native-array generator is invalid; other bindings are nati
 The C++ runtime uses C++17; only Studio's native-variable table needs the scoped
 `-fpermissive` compatibility flag. Handwritten C++ stays strict.
 
+The main page has three tabs: Now playing, Source and Wi-Fi. Shared EEZ widgets
+provide the connection bar and volume notification. The clock displays a Russian
+date/time (for example `08 октября 2026, 14:35:20`) using the device's system time
+and timezone, without requiring a Russian locale. MPD's current file/URI is also
+shown. Skoda fonts authored in Studio remain generated **C source files** in
+`ui/ui_font_*.c`; builds do not require external TTF/binary fonts or Studio.
+Only built-in Montserrat preview fonts are replaced by the Unicode Roboto font.
+
 Transitions follow Android Material **Shared Axis X**: a short horizontal
 slide (32 dp), fade-through and fast-out-slow-in easing over 300 ms. Opening
 a page moves left; returning to Main moves right. Direction/duration remain
@@ -212,14 +220,14 @@ without modifying generated sources. Studio's preview shows the basic slide,
 not the native refinement. Rapid navigation is queued until the transition ends.
 This is an Android-style in-app transition, not a launcher/app-opening effect;
 see [MaterialSharedAxis](https://developer.android.com/reference/com/google/android/material/transition/platform/MaterialSharedAxis).
-The Wi-Fi screen scans networks, accepts a masked password via an onscreen
+The Wi-Fi tab scans networks, accepts a masked password via an onscreen
 keyboard and connects through NetworkManager without blocking the UI. Scans
 prefer `wlan0` over the vendor's `p2p0`; a connection already using `p2p0` is also
 shown as connected. Passwords are cleared after submission and omitted from
 status files/application logs. NetworkManager saves credentials in its persistent
 userdata-backed profile directory. Hidden/enterprise networks require `nmcli`
 profiles. Every screen has light Material Symbols for actual Wi-Fi, Ethernet
-and Bluetooth connections; inactive symbols are light grey. The volume banner
+and Bluetooth connections; inactive symbols are dimmed grey. The volume banner
 is hidden five seconds after the last volume-key event. G2D, touch and FPS remain
 provided by `panel-common`.
 
@@ -487,13 +495,72 @@ profile's application from leaking into another profile's image.
 The media profile provides an A2DP sink, a BlueALSA HFP hands-free endpoint,
 MPD for internet radio/local/NFS music, and a basic touch controller showing
 BlueZ AVRCP track metadata. Put radio URLs in `/userdata/media/radio.m3u` and
-music files under `/userdata/media/music`. Its media UI is a first integration
-pass: phone cover-art transfer, HFP microphone routing, USB automount and
+music files under `/userdata/media/music`. HFP microphone routing and
 network-share browsing are **not yet implemented or hardware-verified**.
 The **Music** button rescans `/userdata/media/music`, fills the MPD queue and
 starts playback; **Pair BT** opens a two-minute pairing window when `hci0` is
 available. If the adapter is absent, check the AIC Wi-Fi/SDIO power-on errors
 in `dmesg` before debugging BlueZ or the media UI.
+
+#### Artwork, seeking and removable music
+
+The EEZ `album_cover_image` displays embedded artwork (`readpicture`), or
+MPD's folder artwork (`albumart`, e.g. `cover.jpg`/`cover.png`). JPEG/PNG
+artwork is resized in the backend and fitted without distortion; missing
+artwork uses the music icon. Cached PNG files live under `/run/a333-media/covers`,
+not inside the music collection. BlueZ experimental AVRCP/BIP cover-art transfer
+is also enabled, but requires support from the phone/player and still needs
+hardware verification. An A2DP connection alone does not guarantee artwork.
+
+The track slider shows elapsed time/duration. Drag/release it to seek a local,
+USB or SD track. Seeking is checked against the current MPD track ID to prevent
+seeking a different track during navigation. Internet streams and Bluetooth
+show available timing metadata but do not enable this seek control.
+Both media defconfigs include FFmpeg, libsndfile and Opus support alongside
+MP3/FLAC/Vorbis, plus Pillow with JPEG/PNG and BlueZ OBEX. This adds formats
+such as AAC/M4A/ALAC, WAV/AIFF, Opus and WMA; actual support can be checked with
+`mpd --version` on the device.
+
+`/media` previously had no SDK runtime use. It is now a tmpfs directory managed
+by `media.mount`, allowing mount-point creation with a read-only rootfs.
+`a333-removable-storage.service` is installed for all profiles:
+
+- USB partitions mount at `/media/usb/sda1`, `/media/usb/sdb1`, etc. Empty
+  mount-point directories are removed when the drive is unplugged.
+- The first recognized partition of a built-in SD card mounts at `/media/sd`.
+  eMMC, loop devices and non-USB SATA disks are excluded.
+- FAT/exFAT, NTFS and ext2/3/4 are supported, mounted read-only with
+  `nodev,nosuid,noexec`. The service never formats or deletes media files.
+
+The media backend receives a Unix-datagram notification and reads an atomic
+inventory at `/run/a333-storage/mounts.json`; polling also recovers missed
+notifications. **USB** and **SD** source buttons rescan that source and play
+its collection. Removal stops playback from the affected drive. MPD indexes
+symlinks under `/userdata/media/library/{local,usb,sd}`; music remains in its
+original location and is never copied into this index. After upgrading, select
+**Music** once to rebuild the local queue with the new `local/` prefix.
+
+For an existing build, new defconfig options require configuration and package
+reconfiguration (save any custom menuconfig changes before `configure`):
+
+```sh
+./build.sh media configure
+./build.sh media build python3-reconfigure bluez5_utils-reconfigure mpd-reconfigure media-panel-rebuild
+./build.sh media build
+```
+
+Use `media-kernel-debug-logs` instead of `media` for the verbose kernel profile.
+Install the resulting RAUC bundle/full image; app-only deployment does not add
+these system packages, services or MPD configuration. Check on the target:
+
+```sh
+systemctl status a333-removable-storage mpd a333-media-backend a333-obex --no-pager
+cat /run/a333-storage/mounts.json
+ls /media/usb /media/sd
+mpc ls local
+mpc ls usb
+```
+
 The tablet's V+/V- keys adjust the codec's left and right DAC gain for both
 local playback and Bluetooth audio (when the adapter is working).
 Linux reads the GPADC resistor ladder and reports `KEY_VOLUMEUP` (115) and

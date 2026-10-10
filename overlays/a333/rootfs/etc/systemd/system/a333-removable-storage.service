@@ -1,0 +1,16 @@
+[Unit]
+Description=A333 USB disk and SD card automount
+Requires=media.mount
+After=media.mount systemd-udevd.service
+Before=mpd.service a333-media-backend.service
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/mkdir -p /media/usb /media/sd
+ExecStart=/usr/bin/python3 /usr/libexec/a333_removable_storage.py
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=45
+
+[Install]
+WantedBy=multi-user.target

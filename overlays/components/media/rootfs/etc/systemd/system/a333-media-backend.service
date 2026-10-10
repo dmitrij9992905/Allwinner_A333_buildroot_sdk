@@ -1,6 +1,7 @@
 [Unit]
 Description=A333 media metadata and control bridge
-After=a333-oem-mount.service mpd.service bluetooth.service
+After=a333-oem-mount.service mpd.service bluetooth.service a333-obex.service a333-removable-storage.service
+Wants=a333-obex.service a333-removable-storage.service
 Requires=a333-oem-mount.service
 
 [Service]

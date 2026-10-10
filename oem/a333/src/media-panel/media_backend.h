@@ -10,14 +10,18 @@ extern "C" {
 
 typedef struct {
     /* Backend limits metadata to 240 Unicode characters, not bytes. */
-    char source[1024], title[1024], artist[1024], album[1024], volume[1024];
+    char source[1024], title[1024], artist[1024], album[1024], volume[1024], filename[1024];
     unsigned long volume_sequence;
     double volume_until;
     bool volume_visible;
+    double position, duration;
+    bool seekable, usb_available, sd_available;
+    char track_id[64], cover_path[1024];
 } media_backend_state_t;
 
 void media_backend_init(media_backend_state_t *state);
-/* Reads the backend's atomic six-line snapshot; never edits media files. */
+/* Reads the atomic snapshot (legacy metadata plus optional playback/storage).
+ * Never edits media files. */
 bool media_backend_poll(media_backend_state_t *state, const char *path, double now);
 bool media_backend_send(const char *socket_path, const char *command);
 bool media_backend_request(const char *socket_path, const char *request);

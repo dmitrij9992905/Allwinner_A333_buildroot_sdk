@@ -1,21 +1,70 @@
 """Test the C snapshot/socket adapter against temporary files, not userdata."""
 import ctypes
+import ast
+import logging
+import os
 from pathlib import Path
 import shutil
 import socket
 import subprocess
 import tempfile
+import time
 import unittest
+import sys
+from unittest.mock import AsyncMock
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'oem/a333/media-rootfs/usr/libexec'))
+from a333_media_playback import seconds
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / 'oem/a333/src/media-panel/media_backend.c'
+BACKEND = ROOT / 'oem/a333/media-rootfs/usr/libexec/a333-media-backend'
+
+
+class BackendStatusTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        tree = ast.parse(BACKEND.read_text())
+        nodes = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                 and n.name in ('clean', 'update_status')]
+        self.namespace = dict(logging=logging, os=os, time=time, RUN=Path(self.directory.name),
+                              seconds=seconds, bt_track=AsyncMock(return_value=None), run_mpc=AsyncMock())
+        exec(compile(ast.Module(body=nodes, type_ignores=[]), str(BACKEND), 'exec'), self.namespace)
+
+    async def status(self, detail):
+        self.namespace['run_mpc'].side_effect = ['[playing]', detail]
+        await self.namespace['update_status'](None, {})
+        return (Path(self.directory.name) / 'status').read_text().splitlines()
+
+    async def test_filename_and_empty_tags_do_not_shift(self):
+        lines = await self.status('Альбом/песня.flac\n\nИсполнитель\nАльбом')
+        self.assertEqual(lines[:4], ['Music / radio', 'песня.flac', 'Исполнитель', 'Альбом'])
+        self.assertEqual(lines[6], 'Альбом/песня.flac')
+        self.assertEqual(len(lines), 13)
+
+    async def test_tags_and_radio_uri(self):
+        lines = await self.status('https://radio.test/live\nRadio title\nArtist\nAlbum')
+        self.assertEqual(lines[1:4], ['Radio title', 'Artist', 'Album'])
+        self.assertEqual(lines[6], 'https://radio.test/live')
+
+    async def test_bluetooth_has_no_stale_mpd_filename(self):
+        self.namespace['run_mpc'].return_value = ''
+        self.namespace['bt_track'].return_value = ('/player', 'playing',
+            dict(Title='Bluetooth title', Artist='Artist', Album='Album'))
+        await self.namespace['update_status'](None, {})
+        lines = (Path(self.directory.name) / 'status').read_text().splitlines()
+        self.assertEqual(lines[0], 'Bluetooth')
+        self.assertEqual(lines[6], '')
 
 
 class State(ctypes.Structure):
     _fields_ = [(name, ctypes.c_char * 1024)
-                for name in ('source', 'title', 'artist', 'album', 'volume')] + [
+                for name in ('source', 'title', 'artist', 'album', 'volume', 'filename')] + [
         ('volume_sequence', ctypes.c_ulong), ('volume_until', ctypes.c_double),
-        ('volume_visible', ctypes.c_bool)]
+        ('volume_visible', ctypes.c_bool), ('position', ctypes.c_double),
+        ('duration', ctypes.c_double), ('seekable', ctypes.c_bool),
+        ('usb_available', ctypes.c_bool), ('sd_available', ctypes.c_bool),
+        ('track_id', ctypes.c_char * 64), ('cover_path', ctypes.c_char * 1024)]
 
 
 @unittest.skipUnless(shutil.which('cc'), 'native C compiler is required')
@@ -59,6 +108,14 @@ class MediaBackendTest(unittest.TestCase):
             self.assertEqual(self.state.title, b'Track')
         self.assertFalse(self.poll('New\nChanged\n'))
         self.assertEqual(self.state.title, b'Track')
+
+    def test_filename_extension_and_legacy_snapshot(self):
+        self.assertTrue(self.poll('Music\nTrack\nArtist\nAlbum\n\n0\nМузыка/трек.flac\n'))
+        self.assertEqual(self.state.filename.decode(), 'Музыка/трек.flac')
+        self.assertFalse(self.poll('New\nChanged\nArtist\nAlbum\n\n0\nunterminated'))
+        self.assertEqual(self.state.title, b'Track')
+        self.assertTrue(self.poll('Music\nTrack\nArtist\nAlbum\n\n0\n'))
+        self.assertEqual(self.state.filename, b'')
 
     def test_banner_expires_five_seconds_after_last_event(self):
         snapshot = 'Music\nTrack\nArtist\nAlbum\nVolume: 40%\n1\n'

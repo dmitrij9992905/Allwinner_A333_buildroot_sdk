@@ -1,0 +1,16 @@
+[Unit]
+Description=Bluetooth Cover Art OBEX client on the system bus
+Requires=dbus.service
+After=dbus.service bluetooth.service
+Before=a333-media-backend.service
+
+[Service]
+Type=dbus
+BusName=org.bluez.obex
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
+ExecStart=/usr/libexec/bluetooth/obexd --nodetach --noplugin=opp,ftp,pbap,mas,mns,irmc,syncevolution,pcsuite
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Runtime mount points for removable media
+Before=a333-removable-storage.service
+
+[Mount]
+What=tmpfs
+Where=/media
+Type=tmpfs
+Options=mode=0755,nodev,nosuid,noexec,size=1M
+

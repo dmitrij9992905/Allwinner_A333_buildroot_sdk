@@ -131,7 +131,7 @@ if [ "$PROFILE" = media ]; then
 		ln -sfn /dev/null "$TARGET_DIR/etc/systemd/system/$upstream_service"
 	done
 	for service in a333-audio-init.service bluealsad.service bluealsa-playback.service mpd.service \
-		a333-media.service a333-media-backend.service; do
+		a333-media.service a333-media-backend.service a333-obex.service; do
 		if [ ! -f "$TARGET_DIR/etc/systemd/system/$service" ]; then
 			echo "post-build: media rootfs overlay missing $service" >&2
 			exit 1
@@ -177,6 +177,8 @@ ln -sfn ../a333-userdata.service \
     "$TARGET_DIR/etc/systemd/system/sysinit.target.wants/a333-userdata.service"
 ln -sfn ../a333-ble-wifi.service \
     "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-ble-wifi.service"
+ln -sfn ../a333-removable-storage.service \
+    "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-removable-storage.service"
 ln -sfn ../a333-bluetooth-uart.service \
     "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-bluetooth-uart.service"
 

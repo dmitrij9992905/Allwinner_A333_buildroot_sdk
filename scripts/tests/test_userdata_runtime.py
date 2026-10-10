@@ -139,7 +139,11 @@ class UserdataBootOrderTest(unittest.TestCase):
                 for line in path.read_text().splitlines():
                     if not re.match(r"Exec\w+=", line):
                         continue
-                    command = re.sub(r"^[-+!:@|]*", "", line.split("=", 1)[1]).split()[0]
+                    arguments = re.sub(r"^[-+!:@|]*", "", line.split("=", 1)[1]).split()
+                    # Empty ExecStart= resets the vendor command in a drop-in.
+                    if not arguments:
+                        continue
+                    command = arguments[0]
                     executable = root / command.lstrip("/") if command.startswith("/") else root / "usr/bin" / command
                     executable.parent.mkdir(parents=True, exist_ok=True)
                     executable.write_text("#!/bin/sh\nexit 0\n")

@@ -116,20 +116,42 @@ class ProjectTest(unittest.TestCase):
         self.assertFalse(arrays['wifi_password']['persistent'])
         actions = {a['name'] for a in data['actions']}
         self.assertTrue({'wifi_scan', 'wifi_connect', 'toggle', 'music', 'radio', 'pair'} <= actions)
+        widgets = {w['name']: w for w in data['userWidgets']}
+        top = widgets['top_panel']['components'][0]
+        icons = [w for w in top['children'] if w['type'] == 'LVGLImageWidget']
+        self.assertEqual(len(icons), 6)
+        for icon in icons:
+            expected = '#F5F8FF' if icon['identifier'].endswith('_on') else '#5A5F64'
+            self.assertEqual(icon['localStyles']['definition']['MAIN']['DEFAULT']['img_recolor'], expected)
+        self.assertEqual(data['settings']['build']['fontExportMode'], 'source')
+        self.assertTrue({'system_datetime', 'track_filename', 'volume_value', 'volume_value_str'} <= arrays.keys())
+        self.assertTrue({'track_progress', 'track_position_duration', 'track_seekable',
+                         'usb_available', 'sd_available'} <= arrays.keys())
+        self.assertTrue({'usb', 'sd', 'seek'} <= actions)
+        self.assertTrue(arrays['track_position_duration']['native'])
+        def descend(items):
+            for item in items:
+                yield item
+                yield from descend(item.get('children', []))
+        main = next(p for p in data['userPages'] if p['name'] == 'Main')
+        tabs = [w for w in descend(main['components']) if w['type'] == 'LVGLTabWidget']
+        self.assertEqual([t['tabName'] for t in tabs], ['Воспроизводится', 'Источник', 'WiFi'])
+        self.assertEqual(len([w for w in descend(main['components']) if w.get('action') == 'wifi_scan']), 1)
+        instance_names = []
         for page in data['userPages']:
             root = page['components'][0]
             self.assertEqual((root['width'], root['height']), (1280, 800))
-            bar = root['children'][0]
-            icons = [w for w in bar['children'] if w['type'] == 'LVGLImageWidget']
-            self.assertEqual(len(icons), 6)
-            for icon in icons:
-                expected = '#F5F8FF' if icon['identifier'].endswith('_on') else '#AEBBC8'
-                self.assertEqual(icon['localStyles']['definition']['MAIN']['DEFAULT']['img_recolor'], expected)
+            instances = [w for w in root['children'] if w['type'] == 'LVGLUserWidgetWidget']
+            self.assertEqual({i['userWidgetPageName'] for i in instances}, {'top_panel', 'notify_panel_volume'})
+            instance_names.extend(i['identifier'] for i in instances)
+            volume = next(i for i in instances if i['userWidgetPageName'] == 'notify_panel_volume')
+            self.assertEqual(volume['hiddenFlag'], '!volume_visible')
             self.assertTrue(page['connectionLines'])
             for component in page['components']:
                 if component['type'] == 'LVGLActionComponent':
                     for action in component['actions']:
-                        if action['action'] == 'CHANGE_SCREEN':
+                        if action['action'] in ('CHANGE_SCREEN', 'changeScreen'):
                             expected = 'OVER_RIGHT' if action['screen'] == 'Main' else 'OVER_LEFT'
                             self.assertEqual(action['fadeMode'], expected)
                             self.assertEqual(action['speed'], 300)
+        self.assertEqual(len(instance_names), len(set(instance_names)))
