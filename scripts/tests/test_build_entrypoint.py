@@ -52,6 +52,13 @@ class EntrypointTest(unittest.TestCase):
             (self.root / directory).symlink_to(ROOT / directory, target_is_directory=True)
         for script in ('build.sh', 'docker-build.sh'):
             shutil.copy2(ROOT / script, self.root / script)
+        (self.root / 'scripts').mkdir()
+        self.toolchain = self.root / 'toolchains/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi'
+        (self.toolchain / 'bin').mkdir(parents=True)
+        for tool in ('gcc', 'as', 'ld', 'ar', 'nm', 'strip', 'objcopy', 'objdump'):
+            path = self.toolchain / 'bin' / ('arm-linux-gnueabi-' + tool)
+            path.write_text('#!/bin/sh\nexit 0\n')
+            path.chmod(0o755)
         (self.root / 'buildroot').mkdir()
         self.bin = self.root / 'bin'
         self.bin.mkdir()
@@ -76,6 +83,9 @@ sys.exit(int(os.environ.get('TEST_EXIT', '0')))
             path = self.bin / tool
             path.write_text(fake)
             path.chmod(0o755)
+        prepare = self.root / 'scripts/prepare-vendor-sources.sh'
+        prepare.write_text(fake)
+        prepare.chmod(0o755)
         self.env = {**os.environ, 'PATH': str(self.bin) + ':' + os.environ['PATH'],
                     'TEST_CALLS': str(self.log), 'TERM': 'xterm-256color'}
         self.env.pop('A333_DOCKER_BUILD', None)
@@ -119,7 +129,12 @@ sys.exit(int(os.environ.get('TEST_EXIT', '0')))
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 calls = self.calls()
                 self.assertTrue(calls)
-                self.assertTrue(all(c['tool'] == 'make' for c in calls))
+                prepare_calls = [c for c in calls if c['tool'] == 'prepare-vendor-sources.sh']
+                self.assertEqual(len(prepare_calls), int(action == 'build'))
+                if action == 'build':
+                    self.assertEqual(calls[0]['tool'], 'prepare-vendor-sources.sh')
+                calls = [c for c in calls if c['tool'] == 'make']
+                self.assertTrue(calls)
                 expected = action if action != 'configure' else 'a333_media_defconfig'
                 self.assertTrue(any(expected in c['args'] for c in calls) if action != 'build' else True)
                 for call in calls:
@@ -156,6 +171,38 @@ sys.exit(int(os.environ.get('TEST_EXIT', '0')))
         args = self.calls()[0]['args']
         self.assertNotIn('--tty', args)
         self.assertIn('--interactive', args)
+
+    def test_failed_source_preparation_stops_before_make(self):
+        self.env['TEST_EXIT'] = '17'
+        result = self.invoke('build', container=True)
+        self.assertEqual(result.returncode, 17)
+        self.assertEqual([c['tool'] for c in self.calls()], ['prepare-vendor-sources.sh'])
+
+    def test_missing_toolchain_stops_before_preparation_and_make(self):
+        shutil.rmtree(self.toolchain)
+        result = self.invoke('build', container=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('Missing or non-executable vendor U-Boot tool:', result.stderr)
+        self.assertIn('Copy the complete Linaro 7.2.1 toolchain', result.stderr)
+        self.assertFalse(self.calls())
+        self.assertFalse((self.root / 'output').exists())
+        for action in ('configure', 'menuconfig', 'savedefconfig', 'clean'):
+            result = self.invoke(action, container=True, terminal=action == 'menuconfig')
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_incomplete_or_unrunnable_toolchain_stops_before_make(self):
+        assembler = self.toolchain / 'bin/arm-linux-gnueabi-as'
+        assembler.chmod(0o644)
+        result = self.invoke('build', container=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('Missing or non-executable vendor U-Boot tool:', result.stderr)
+        self.assertFalse(self.calls())
+        assembler.write_text('#!/bin/sh\nexit 23\n')
+        assembler.chmod(0o755)
+        result = self.invoke('build', container=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('Cannot run vendor U-Boot tool:', result.stderr)
+        self.assertFalse(self.calls())
 
     def test_wrapper_shell_and_direct_commands_get_automatic_tty(self):
         for extra in ([], ['make', 'menuconfig'], ['prepare-sources']):

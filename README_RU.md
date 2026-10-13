@@ -40,6 +40,23 @@ dl/, ccache/, toolchains/   локальные кэши и toolchain, игнор
 `bin/arm-linux-gnueabi-gcc` внутри него был исполняемым. Каталоги исходников
 и упаковщика в `vendor/allwinner-a333/` также должны присутствовать.
 
+Перенос репозитория через Git не переносит `toolchains/`. Скопируйте весь
+каталог указанного Linaro с рабочего компьютера или распакуйте его архив
+из исходного Allwinner SDK (подставьте фактический путь к архиву):
+
+```sh
+mkdir -p toolchains
+tar -xJf /путь/к/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi.tar.xz -C toolchains
+./docker-build.sh /workspace/toolchains/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc --version
+./build.sh media build
+```
+
+Docker подключает корень репозитория как `/workspace`, поэтому каталог
+должен находиться именно внутри проекта. Сохраняйте символьные ссылки
+toolchain и права исполнения при копировании. `build.sh` проверяет наличие
+инструментов и запуск GCC/ассемблера перед подготовкой исходников и сборкой.
+После восстановления toolchain достаточно продолжить сборку без `clean`.
+
 ### Первая сборка после клонирования
 
 ```sh
@@ -53,6 +70,15 @@ dl/, ccache/, toolchains/   локальные кэши и toolchain, игнор
 Вместо `dmx` можно выбрать `media` или `headless`. Каждый профиль собирается
 в собственном `output/profiles/<profile>/`. Если `.config` ещё нет, команда
 `build` сама выполнит `configure`; выше шаг показан отдельно для ясности.
+
+`build.sh <profile> build` также автоматически подготавливает отсутствующие
+vendor-архивы перед неинтерактивной сборкой. Для прямого запуска Buildroot/make
+остаётся команда `prepare-sources`. Исходники U-Boot находятся в
+`vendor/allwinner-a333/boot/u-boot-2018`, а `uboot-custom` — имя каталога сборки
+Buildroot. Архив `dl/u-boot-a333.tar.zst` создаётся локально и отсутствует на
+`sources.buildroot.net`. Если на другом компьютере его нет, выполните
+`./docker-build.sh prepare-sources`, затем продолжите `./build.sh media build`.
+Очищать уже собранные пакеты не требуется.
 
 ### Чистая пересборка одного профиля
 
