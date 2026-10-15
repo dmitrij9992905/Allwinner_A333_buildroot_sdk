@@ -156,6 +156,47 @@ sys.exit(int(os.environ.get('TEST_EXIT', '0')))
         self.assertFalse(any('a333_media_defconfig' in c['args'] for c in self.calls()))
         self.assertIn('TEST_CUSTOM=y', config.read_text())
 
+    def test_existing_profile_enables_host_dtc_and_rebuilds_only_uboot(self):
+        result = self.invoke('configure', container=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        output = self.root / 'output/profiles/media'
+        config = output / '.config'
+        config.write_text(config.read_text().replace('BR2_TARGET_UBOOT_NEEDS_DTC=y',
+                          '# BR2_TARGET_UBOOT_NEEDS_DTC is not set') + '\nTEST_CUSTOM=y\n')
+        uboot = output / 'build/uboot-custom'
+        uboot.mkdir(parents=True)
+        for stamp in ('.stamp_configured', '.stamp_built', '.stamp_images_installed', '.stamp_patched'):
+            (uboot / stamp).touch()
+        (uboot / 'object.o').write_text('keep compiled objects')
+        linux = output / 'build/linux-custom'
+        linux.mkdir()
+        (linux / '.stamp_built').touch()
+        self.log.unlink()
+        result = self.invoke('build', 'uboot', container=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('BR2_TARGET_UBOOT_NEEDS_DTC=y', config.read_text())
+        self.assertNotIn('# BR2_TARGET_UBOOT_NEEDS_DTC is not set', config.read_text())
+        self.assertIn('TEST_CUSTOM=y', config.read_text())
+        self.assertTrue(any('olddefconfig' in c['args'] for c in self.calls()))
+        self.assertFalse((uboot / '.stamp_built').exists())
+        self.assertFalse((uboot / '.stamp_configured').exists())
+        self.assertFalse((uboot / '.stamp_images_installed').exists())
+        self.assertTrue((uboot / '.stamp_patched').exists())
+        self.assertTrue((uboot / 'object.o').exists())
+        self.assertTrue((linux / '.stamp_built').exists())
+        # A repeated build must leave successfully rebuilt U-Boot alone.
+        (uboot / '.stamp_built').touch()
+        self.log.unlink()
+        result = self.invoke('build', 'uboot', container=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue((uboot / '.stamp_built').exists())
+        self.assertFalse(any('olddefconfig' in c['args'] for c in self.calls()))
+
+    def test_all_a333_defconfigs_require_host_dtc(self):
+        for config in (ROOT / 'configs/configs').glob('a333_*_defconfig'):
+            with self.subTest(config=config.name):
+                self.assertIn('BR2_TARGET_UBOOT_NEEDS_DTC=y', config.read_text().splitlines())
+
     def test_interactive_targets_fail_clearly_without_a_terminal(self):
         for args in (('menuconfig',), ('build', 'linux-menuconfig'), ('build', 'busybox-menuconfig')):
             result = self.invoke(*args)
@@ -218,4 +259,18 @@ sys.exit(int(os.environ.get('TEST_EXIT', '0')))
         args = self.calls()[0]['args']
         self.assertEqual(args[0], 'build')
         self.assertNotIn('--interactive', args)
+
+    def test_factory_firmware_paths_are_forwarded_to_docker(self):
+        values = {'A333_FACTORY_IMAGE': '/workspace/dl/factory/image.img',
+                  'A333_FACTORY_BOOT0': '/workspace/dl/factory/boot0.fex',
+                  'A333_FACTORY_SCP': '/workspace/dl/factory/scp.fex'}
+        result = subprocess.run(['bash', str(self.root / 'docker-build.sh'),
+                                 '/workspace/scripts/pack-a333-image.sh',
+                                 '/workspace/output/profiles/media/images'],
+                                env={**self.env, **values}, input='', capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        args = self.calls()[0]['args']
+        for key, value in values.items():
+            index = args.index(f'{key}={value}')
+            self.assertEqual(args[index - 1], '--env')
         self.assertNotIn('--tty', args)

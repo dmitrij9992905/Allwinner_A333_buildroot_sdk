@@ -3323,6 +3323,10 @@ function main()
 	if [ "$output_resources" == "false" ] && [ -z "$from_resources" ]; then
 		do_prepare
 		do_ini_to_dts
+		if [ -n "${A333_PACK_PRE_COMMON_HOOK:-}" ]; then
+			(cd "${LICHEE_PACK_OUT_DIR}" && sh "${A333_PACK_PRE_COMMON_HOOK}") || \
+				LOGF "A333 boot firmware preparation failed"
+		fi
 		do_common
 		do_pack_${PACK_TYPE}
 		if [ -n "${A333_PACK_PRE_FINISH_HOOK:-}" ]; then

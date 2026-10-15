@@ -25,10 +25,11 @@ if [[ -t 0 && -t 1 ]]; then
     run_args+=(--tty --env "TERM=${TERM:-xterm-256color}")
 fi
 
-# Optional RAUC settings are passed through when supplied by the caller. Use
+# Optional image settings are passed through when supplied by the caller. Use
 # paths visible inside the container (for example /workspace/keys/prod.key.pem).
 for env_name in A333_RAUC_KEY A333_RAUC_CERT A333_RAUC_KEY_DIR \
-    A333_RAUC_BUNDLE A333_RAUC_VERSION A333_RAUC_BUNDLE_NAME A333_CREDENTIALS_ROOT; do
+    A333_RAUC_BUNDLE A333_RAUC_VERSION A333_RAUC_BUNDLE_NAME A333_CREDENTIALS_ROOT \
+    A333_FACTORY_IMAGE A333_FACTORY_BOOT0 A333_FACTORY_SCP; do
     if [[ -v "$env_name" ]]; then
         run_args+=(--env "$env_name=${!env_name}")
     fi

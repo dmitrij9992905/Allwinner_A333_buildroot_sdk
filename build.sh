@@ -152,6 +152,14 @@ sync_profile_config() {
     local expected="BR2_ROOTFS_OVERLAY=\"$rootfs_overlay_list\""
     local changed=0
     [[ -f $config_file ]] || return 0
+    # Vendor U-Boot disables its bundled dtc build. Ask Buildroot to build
+    # host-dtc and pass DTC explicitly, including for existing output trees.
+    if ! grep -Fxq 'BR2_TARGET_UBOOT_NEEDS_DTC=y' "$config_file"; then
+        sed -i '/^BR2_TARGET_UBOOT_NEEDS_DTC=/d; /^# BR2_TARGET_UBOOT_NEEDS_DTC is not set$/d' "$config_file"
+        printf 'BR2_TARGET_UBOOT_NEEDS_DTC=y\n' >> "$config_file"
+        invalidate_package_config uboot
+        changed=1
+    fi
     if ! grep -Fxq "$expected" "$config_file"; then
         if ! grep -q '^BR2_ROOTFS_OVERLAY=' "$config_file"; then
             echo "Missing BR2_ROOTFS_OVERLAY in $config_file" >&2

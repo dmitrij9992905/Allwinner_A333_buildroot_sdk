@@ -20,9 +20,11 @@ PACK_OUT_DIR="$PACK_WORK/pack_out"
 PACK_PLATFORM_OUT="$PACK_WORK/a333/pro/dragonboard"
 PACK_CONFIG="$PACK_ROOT/out/a333/pro/dragonboard/.buildconfig"
 HOOK="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/pack-pre-finish.sh"
+BOOT_FILES_HOOK="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/pack-boot-files.sh"
 PARTITION_CONFIG="$PROJECT_ROOT/configs/boards/a333/helperboard-a333/sys_partition-ab.fex"
 PACK_PARTITION_CONFIG="$PACK_ROOT/device/config/chips/a333/configs/pro/dragonboard/sys_partition.fex"
 FACTORY_IMAGE_DEFAULT="$PROJECT_ROOT/../allwinner-a333/helpera333_ubuntu22.04_xfce_mipi8.0_800x1280_20251114.img"
+FACTORY_IMAGE_LOCAL="$PROJECT_ROOT/dl/factory/helpera333_ubuntu22.04_xfce_mipi8.0_800x1280_20251114.img"
 OUTPUT_DIR="$(CDPATH= cd -- "$(dirname -- "$BINARIES_DIR")" && pwd)"
 CONFIG_FILE="${BR2_CONFIG:-$OUTPUT_DIR/.config}"
 DISPLAY_ROTATION="${A333_DISPLAY_ROTATION:-}"
@@ -128,12 +130,16 @@ echo "pack-a333-image: boot logo rotation is $DISPLAY_ROTATION degrees"
 export A333_BINARIES_DIR="$BINARIES_DIR"
 export A333_PROJECT_ROOT="$PROJECT_ROOT"
 export A333_PACK_WORK="$PACK_WORK"
-# If the vendor Ubuntu image is present next to this repository, use it as
-# the source of the known-good boot0/SCP pair. The variable can be overridden
-# for another factory image, or left empty to keep the SDK binaries.
-if [ -z "${A333_FACTORY_IMAGE:-}" ] && [ -f "$FACTORY_IMAGE_DEFAULT" ]; then
-	export A333_FACTORY_IMAGE="$FACTORY_IMAGE_DEFAULT"
+# Prefer a factory image inside the mounted project; keep the old sibling
+# location for direct host use. Explicit image or boot0/SCP paths take priority.
+if [ -z "${A333_FACTORY_IMAGE:-}${A333_FACTORY_BOOT0:-}${A333_FACTORY_SCP:-}" ]; then
+	if [ -f "$FACTORY_IMAGE_LOCAL" ]; then
+		export A333_FACTORY_IMAGE="$FACTORY_IMAGE_LOCAL"
+	elif [ -f "$FACTORY_IMAGE_DEFAULT" ]; then
+		export A333_FACTORY_IMAGE="$FACTORY_IMAGE_DEFAULT"
+	fi
 fi
+export A333_PACK_PRE_COMMON_HOOK="$BOOT_FILES_HOOK"
 export A333_PACK_PRE_FINISH_HOOK="$HOOK"
 export A333_PACK_SKIP_FLASHMAP=1
 

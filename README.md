@@ -83,6 +83,13 @@ is not available on `sources.buildroot.net`. If that archive is missing on
 another computer, run `./docker-build.sh prepare-sources`, then resume
 `./build.sh media build`; no clean rebuild is required.
 
+Vendor U-Boot uses Buildroot's `host-dtc`, enabled by
+`BR2_TARGET_UBOOT_NEEDS_DTC=y` in every defconfig. Its bundled
+`scripts/dtc/dtc` build is disabled in the vendor sources. `build.sh` also
+enables this dependency in existing `.config` files, preserving other settings.
+Check the bootloader alone with `./build.sh media build uboot`, then resume
+`./build.sh media build`; neither `clean` nor `configure` is required.
+
 ### Clean rebuild of one profile
 
 To discard compiled packages, target rootfs and images for `dmx`, while
@@ -204,15 +211,34 @@ environment; see the one-time RAUC migration below.
 
 The final post-image step automatically creates `boot.img`, A/B payload
 files, a RAUC bundle, and a complete vendor image using the `dragon` packer
-copied from the original SDK. To repack the image without rebuilding Buildroot,
-run the following command inside the container:
+copied from the original SDK. The full image requires SCP firmware in its boot
+package. If the active vendor `scp.bin` is absent, put the HelperBoard A333
+factory image in the ignored `dl/factory/` directory. The filename
+`helpera333_ubuntu22.04_xfce_mipi8.0_800x1280_20251114.img` is detected
+automatically; otherwise supply its path inside the container:
 
 ```sh
-./docker-build.sh /workspace/scripts/pack-a333-image.sh /workspace/output/images
+A333_FACTORY_IMAGE=/workspace/dl/factory/helperboard.img \
+  ./build.sh media build
 ```
 
-Temporary packer data is stored in `output/images/.a333-pack/` and ignored by
-Git.
+Docker forwards this variable to the packer. boot0/SCP are extracted before
+the first `boot_package.fex` is created. Alternatively, set both
+`A333_FACTORY_BOOT0` and `A333_FACTORY_SCP` to a verified compatible pair.
+The old `scp.bin.before-new-vendor-sdk` backup is not used automatically.
+
+Once post-image has created `boot.img`, the A/B payloads and the RAUC bundle,
+repack only the full image by running this on the host:
+
+```sh
+A333_FACTORY_IMAGE=/workspace/dl/factory/helperboard.img \
+  ./docker-build.sh /workspace/scripts/pack-a333-image.sh /workspace/output/profiles/media/images
+```
+
+No `clean` is needed. The result is
+`output/profiles/media/images/a333-helperboard-full.img`. Temporary packer data
+is stored in `output/profiles/media/images/.a333-pack/` and ignored by Git.
+Use `/workspace/output/images` for a legacy build without profiles.
 
 To change Buildroot settings:
 
