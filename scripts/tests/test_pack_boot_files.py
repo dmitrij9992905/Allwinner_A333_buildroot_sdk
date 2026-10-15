@@ -90,6 +90,17 @@ shutil.copyfile(source / name, sys.argv[2])
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.pack().returncode, 0)
 
+    def test_actual_vendor_scp_needs_no_factory_image(self):
+        firmware = ROOT / 'vendor/allwinner-a333/pack-sdk/device/config/chips/a333/bin/scp.bin'
+        self.assertTrue(firmware.is_file(), 'Required vendor SCP firmware is missing')
+        self.assertGreater(firmware.stat().st_size, 0)
+        shutil.copy2(firmware, self.out / 'scp.fex')
+        result = self.invoke()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        package = self.pack()
+        self.assertEqual(package.returncode, 0, package.stdout + package.stderr)
+        self.assertIn(firmware.read_bytes(), (self.out / 'boot_package.fex').read_bytes())
+
     def test_missing_scp_is_actionable_and_does_not_use_old_backup(self):
         backup = self.root / 'vendor/allwinner-a333/pack-sdk/device/config/chips/a333/bin/scp.bin.before-new-vendor-sdk'
         backup.parent.mkdir(parents=True)
@@ -161,6 +172,22 @@ do_common() { test -s "$LICHEE_PACK_OUT_DIR/scp.fex" && touch "$LICHEE_PACK_OUT_
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue((self.out / 'packed').exists())
+
+
+class FirmwareGitVisibilityTest(unittest.TestCase):
+    @unittest.skipUnless((ROOT / '.git').exists() and shutil.which('git'),
+                         'Git checkout is required to check ignore rules')
+    def test_scp_and_its_ignore_rules_can_be_committed(self):
+        for directory in ('vendor/allwinner-a333/device/a333',
+                          'vendor/allwinner-a333/pack-sdk/device/config/chips/a333'):
+            for name in ('bin/scp.bin', '.gitignore'):
+                path = directory + '/' + name
+                with self.subTest(path=path):
+                    result = subprocess.run(
+                        ['git', '-C', str(ROOT), 'check-ignore', '--no-index', '--quiet', path],
+                        capture_output=True, text=True, timeout=15)
+                    self.assertEqual(result.returncode, 1,
+                                     f'{path} is ignored or could not be checked: {result.stderr}')
 
 
 if __name__ == '__main__':

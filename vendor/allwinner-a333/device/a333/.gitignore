@@ -1,0 +1,9 @@
+.*
+!.gitignore
+configs/*/board.dts
+configs/*/dtbo/*.dtbo
+bin/u-boot-*.bin
+# SCP is a required firmware input, not a generated build artifact.
+!bin/scp.bin
+arisc.config
+/dtbo/sunxi_board*.dtbo
