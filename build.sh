@@ -200,6 +200,23 @@ if [[ $action == clean ]]; then
     fi
     exit 0
 fi
+if [[ $action == build && $interactive_config == 0 ]]; then
+    uboot_toolchain_dir="$project_dir/toolchains/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi"
+    for tool in gcc as ld ar nm strip objcopy objdump; do
+        if [[ ! -x $uboot_toolchain_dir/bin/arm-linux-gnueabi-$tool ]]; then
+            echo "Missing or non-executable vendor U-Boot tool: $uboot_toolchain_dir/bin/arm-linux-gnueabi-$tool" >&2
+            echo "Copy the complete Linaro 7.2.1 toolchain into $uboot_toolchain_dir (see README_RU.md / README.md)." >&2
+            exit 1
+        fi
+    done
+    for tool in gcc as; do
+        if ! "$uboot_toolchain_dir/bin/arm-linux-gnueabi-$tool" --version >/dev/null; then
+            echo "Cannot run vendor U-Boot tool: $uboot_toolchain_dir/bin/arm-linux-gnueabi-$tool; check the toolchain files and host runtime libraries." >&2
+            exit 1
+        fi
+    done
+    "$project_dir/scripts/prepare-vendor-sources.sh"
+fi
 if [[ $action == configure || ! -f $project_dir/$OUTPUT_DIR/.config ]]; then
     run_make "$DEFCONFIG"
 fi

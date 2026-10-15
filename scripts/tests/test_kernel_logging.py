@@ -67,6 +67,16 @@ class LoggingTest(unittest.TestCase):
             for directory in ("configs", "profiles", "overlays", "oem"):
                 (root / directory).symlink_to(ROOT / directory, target_is_directory=True)
             shutil.copy2(ROOT / "build.sh", root / "build.sh")
+            (root / "scripts").mkdir()
+            prepare = root / "scripts/prepare-vendor-sources.sh"
+            prepare.write_text('#!/bin/sh\nexit 0\n')
+            prepare.chmod(0o755)
+            toolchain = root / "toolchains/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi/bin"
+            toolchain.mkdir(parents=True)
+            for tool in ("gcc", "as", "ld", "ar", "nm", "strip", "objcopy", "objdump"):
+                executable = toolchain / ("arm-linux-gnueabi-" + tool)
+                executable.write_text('#!/bin/sh\nexit 0\n')
+                executable.chmod(0o755)
             (root / "buildroot").mkdir()
             make = root / "make"
             make.write_text('#!/bin/sh\nprintf "%s\\n" "$@" >> "$LOG_PATH"\n')

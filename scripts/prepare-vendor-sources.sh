@@ -8,39 +8,73 @@ echo "using project vendor copy: $vendor_root"
 
 mkdir -p "$dl_dir"
 
+stage_dir=
+archive_tmp=
+cleanup()
+{
+	[[ -z "$stage_dir" ]] || rm -rf -- "$stage_dir"
+	[[ -z "$archive_tmp" ]] || rm -f -- "$archive_tmp"
+	return 0
+}
+trap cleanup EXIT
+
 make_archive()
 {
-	name="$1"
-	source_parent="$2"
-	target="$dl_dir/$3"
-	extra_tree="${4:-}"
+	local name="$1"
+	local source_parent="$2"
+	local target="$dl_dir/$3"
+	local extra_tree="${4:-}"
+	local -a tar_args
 
 	if [[ -f "$target" ]]; then
 		if [[ -z "$extra_tree" ]] || \
-			(tar --zstd --list --file "$target" | grep -Fqx "$name/bsp/Kconfig" && \
-			 tar --zstd --list --file "$target" | grep -Fqx "$name/bsp/include/sunxi-autogen.h"); then
+			tar --zstd --list --file "$target" \
+				"$name/bsp/Kconfig" "$name/bsp/include/sunxi-autogen.h" >/dev/null 2>&1; then
 			echo "exists: $target"
 			return 0
 		fi
 
-		echo "stale archive lacks $name/bsp/Kconfig: $target"
+		echo "stale or invalid archive lacks required BSP files: $target"
 		mv -- "$target" "$target.stale-missing-bsp"
 	fi
 
+	if [[ ! -f "$source_parent/$name/Makefile" ]]; then
+		echo "Missing vendor source tree: $source_parent/$name" >&2
+		return 1
+	fi
+	if [[ -n "$extra_tree" && ! -f "$extra_tree/Kconfig" ]]; then
+		echo "Missing vendor BSP: $extra_tree" >&2
+		return 1
+	fi
+
 	echo "creating: $target"
-	tar_args=(--zstd --create --file "$target" --exclude-vcs)
+	archive_tmp="$(mktemp "$target.tmp.XXXXXX")"
+	tar_args=(--zstd --create --file "$archive_tmp" --exclude-vcs)
 	if [[ -n "$extra_tree" ]]; then
 		stage_dir="$(mktemp -d "$project_root/.allwinner-a333-archive.XXXXXX")"
-		trap 'rm -rf -- "$stage_dir"' RETURN
 		cp -al -- "$source_parent/$name" "$stage_dir/"
-		rm -- "$stage_dir/$name/bsp"
+		# Git clones omit the original SDK's ignored BSP symlink.
+		if [[ -L "$stage_dir/$name/bsp" ]]; then
+			rm -- "$stage_dir/$name/bsp"
+		elif [[ -e "$stage_dir/$name/bsp" ]]; then
+			rm -rf -- "$stage_dir/$name/bsp"
+		fi
 		cp -al -- "$extra_tree" "$stage_dir/$name/bsp"
+		# mkkernel.sh normally generates this ignored version header. The
+		# independent Buildroot build does not run that SDK script.
+		if [[ ! -f "$stage_dir/$name/bsp/include/sunxi-autogen.h" ]]; then
+			mkdir -p "$stage_dir/$name/bsp/include"
+			printf '#define AW_BSP_VERSION "Allwinner A333 Buildroot vendor snapshot"\n' \
+				> "$stage_dir/$name/bsp/include/sunxi-autogen.h"
+		fi
 		tar "${tar_args[@]}" -C "$stage_dir" "$name"
-		trap - RETURN
 		rm -rf -- "$stage_dir"
-		return 0
+		stage_dir=
+	else
+		tar "${tar_args[@]}" -C "$source_parent" "$name"
 	fi
-	tar "${tar_args[@]}" -C "$source_parent" "$name"
+	mv -- "$archive_tmp" "$target"
+	archive_tmp=
 }
 
 make_archive \

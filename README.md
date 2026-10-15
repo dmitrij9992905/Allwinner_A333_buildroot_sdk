@@ -43,6 +43,22 @@ Git**: before the first build, provide
 `bin/arm-linux-gnueabi-gcc` is executable. The vendor sources and packer under
 `vendor/allwinner-a333/` must also be present.
 
+Git does not transfer `toolchains/`. Copy the complete Linaro directory from
+a working computer, preserving symlinks and executable permissions, or extract
+its archive from the original Allwinner SDK (replace the archive path below):
+
+```sh
+mkdir -p toolchains
+tar -xJf /path/to/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi.tar.xz -C toolchains
+./docker-build.sh /workspace/toolchains/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc --version
+./build.sh media build
+```
+
+Docker mounts the repository root at `/workspace`, so the toolchain must live
+inside the project. `build.sh` checks that its tools exist and GCC/the assembler
+can run before preparing sources or starting a build. Resume without `clean`
+after restoring the toolchain.
+
 ### First build after cloning
 
 ```sh
@@ -57,6 +73,15 @@ Replace `dmx` with any name from `./build.sh list` to build another profile. Eac
 separate `output/profiles/<profile>/` directory. `build` automatically runs
 `configure` when that profile has no `.config`, but the explicit step above
 makes the first-build sequence easier to inspect.
+
+`build.sh <profile> build` also prepares missing vendor archives automatically
+before starting a non-interactive build. `prepare-sources` remains available
+for direct Buildroot/make usage. U-Boot sources live in
+`vendor/allwinner-a333/boot/u-boot-2018`; `uboot-custom` is Buildroot's build
+directory name. Its `dl/u-boot-a333.tar.zst` archive is generated locally and
+is not available on `sources.buildroot.net`. If that archive is missing on
+another computer, run `./docker-build.sh prepare-sources`, then resume
+`./build.sh media build`; no clean rebuild is required.
 
 ### Clean rebuild of one profile
 

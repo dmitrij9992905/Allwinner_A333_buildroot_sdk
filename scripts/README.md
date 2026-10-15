@@ -8,6 +8,12 @@ copied kernel and U-Boot sources. The archives are generated in `dl/`, which
 is ignored as a download cache. Buildroot's compiler cache is kept separately
 in `ccache/`.
 
+Non-interactive profile builds call this preparation automatically. Kernel
+archives include a real `bsp/` directory even when the original ignored SDK
+symlink is absent. If the ignored `sunxi-autogen.h` version header is missing,
+preparation generates it in the temporary archive tree, preserving vendor
+sources. Archives are published only after tar completes successfully.
+
 The ignored `toolchains/` directory contains the copied Allwinner SDK Linaro
 toolchain used only for the 32-bit vendor U-Boot build. The main Buildroot
 target toolchain remains AArch64/glibc.
