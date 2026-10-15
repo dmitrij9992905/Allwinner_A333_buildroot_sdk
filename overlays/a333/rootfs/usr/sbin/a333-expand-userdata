@@ -2,22 +2,61 @@
 set -eu
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
-disk=${A333_USERDATA_DISK:-/dev/mmcblk0}
-part=${A333_USERDATA_PARTITION:-/dev/mmcblk0p10}
-part_name=${part##*/}
+. /usr/libexec/a333-storage.sh
+disk=${A333_USERDATA_DISK:-${A333_STORAGE_DISK:-/dev/mmcblk0}}
+number=$(a333_partition_number "$disk" userdata) || { echo "a333-expand-userdata: named userdata unavailable" >&2; exit 1; }
+part=$(a333_partition_path "$disk" "$number")
+if [ "${A333_USERDATA_PARTITION:-$part}" != "$part" ]; then
+    echo "a333-expand-userdata: partition override is not named userdata; refusing" >&2
+    exit 1
+fi
 [ -b "$disk" ] && [ -b "$part" ] || { echo "a333-expand-userdata: device unavailable" >&2; exit 1; }
-start=$(cat "/sys/class/block/$part_name/start")
-current=$(cat "/sys/class/block/$part_name/size")
+info=$(sgdisk --info="$number" "$disk")
+start=$(printf '%s\n' "$info" | awk '/^First sector:/ {print $3}')
+end=$(printf '%s\n' "$info" | awk '/^Last sector:/ {print $3}')
+guid=$(printf '%s\n' "$info" | awk '/^Partition unique GUID:/ {print $4}')
+case "$start:$end" in *[!0-9:]*) exit 1 ;; esac
+[ -n "$start" ] && [ -n "$end" ] && [ "$end" -ge "$start" ] || exit 1
+case "$guid" in ''|*[!A-Fa-f0-9-]*) exit 1 ;; esac
+current=$((end - start + 1))
 total=$(blockdev --getsz "$disk" 2>/dev/null || cat "/sys/class/block/${disk##*/}/size")
-last=$((total - 34))
+table=$(sgdisk --print "$disk")
+# Respect the GPT's own usable range. Allwinner reserves 36 MiB at the
+# beginning but only a small GPT backup area at the end. sgdisk -e assumes
+# symmetric reservations and would incorrectly shrink this range.
+last=$(printf '%s\n' "$table" | awk '/^First usable sector is / {print $NF}')
+case "$last:$total" in *[!0-9:]*) exit 1 ;; esac
+if [ -z "$last" ] || [ -z "$total" ] || [ "$last" -lt "$end" ] || [ "$last" -ge "$total" ]; then
+    echo "a333-expand-userdata: invalid GPT usable bounds; preserving all data" >&2
+    exit 1
+fi
 available=$((last - start + 1))
 [ "$current" -ge "$available" ] && exit 0
 command -v sgdisk >/dev/null 2>&1 || { echo "a333-expand-userdata: sgdisk missing" >&2; exit 1; }
+# Only the known unused UDISK tail may be removed. Never delete credentials
+# or another future partition simply because it happens to be p11/p12.
+indices=$(printf '%s\n' "$table" | awk '$1 ~ /^[0-9]+$/ {print $1}')
+set --
+for index in $indices; do
+    [ "$index" != "$number" ] || continue
+    other=$(sgdisk --info="$index" "$disk")
+    other_end=$(printf '%s\n' "$other" | awk '/^Last sector:/ {print $3}')
+    other_start=$(printf '%s\n' "$other" | awk '/^First sector:/ {print $3}')
+    other_name=$(printf '%s\n' "$other" | sed -n "s/^Partition name: '\(.*\)'$/\1/p")
+    case "$other_start:$other_end" in *[!0-9:]*) exit 1 ;; esac
+    [ -n "$other_start" ] && [ -n "$other_end" ] || exit 1
+    if [ "$other_end" -ge "$start" ]; then
+        if [ "$other_name" = UDISK ] && [ "$other_start" -gt "$end" ]; then
+            set -- "$@" "--delete=$index"
+        else
+            echo "a333-expand-userdata: partition '$other_name' blocks expansion; preserving all data" >&2
+            exit 1
+        fi
+    fi
+done
 echo "a333-expand-userdata: growing $part from $current to $available sectors"
-delete_tail=""
-if sgdisk -i 11 "$disk" >/dev/null 2>&1; then
-    delete_tail="--delete=11"
-fi
-sgdisk -a 1 $delete_tail --delete=10 --new=10:"$start":"$last" --typecode=10:8300 --change-name=10:userdata "$disk"
+sgdisk -a 1 "$@" --delete="$number" --new="$number:$start:$last" \
+    --typecode="$number:8300" --change-name="$number:userdata" \
+    --partition-guid="$number:$guid" "$disk"
 blockdev --rereadpt "$disk" >/dev/null 2>&1 || true
 exit 10

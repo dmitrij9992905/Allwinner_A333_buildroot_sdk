@@ -35,6 +35,7 @@ class UserdataDirectoriesTest(unittest.TestCase):
 
     def prepare(self):
         source = SCRIPT.read_text().split('case "${1:-start}" in', 1)[0]
+        source = source.replace('. /usr/libexec/a333-storage.sh', '')
         source = source.replace("/userdata", str(self.userdata))
         source = source.replace("/etc/machine-id", shlex.quote(str(self.machine_id)))
         source += '\nPATH=' + shlex.quote(str(self.bin) + ":/usr/bin:/bin")
@@ -133,6 +134,12 @@ class UserdataBootOrderTest(unittest.TestCase):
             wants = root / "etc/systemd/system/sysinit.target.wants"
             wants.mkdir(exist_ok=True)
             (wants / "a333-userdata.service").symlink_to("../a333-userdata.service")
+            credentials_wants = root / "etc/systemd/system/multi-user.target.wants"
+            credentials_wants.mkdir(exist_ok=True)
+            credentials_link = credentials_wants / "a333-credentials.service"
+            if credentials_link.is_symlink():
+                credentials_link.unlink()
+            credentials_link.symlink_to("../a333-credentials.service")
             for path in root.rglob("*"):
                 if path.is_symlink() or not path.is_file():
                     continue
@@ -150,7 +157,7 @@ class UserdataBootOrderTest(unittest.TestCase):
                     executable.chmod(0o755)
             result = subprocess.run([shutil.which("systemd-analyze"), "verify", "--man=no",
                                      "--generators=no", "--root=" + str(root),
-                                     "a333-userdata.service", "systemd-journal-flush.service",
+                                     "a333-userdata.service", "a333-credentials.service", "systemd-journal-flush.service",
                                      "systemd-tmpfiles-setup.service", "systemd-timesyncd.service",
                                      "bluetooth.service", "NetworkManager.service"],
                                     text=True, capture_output=True, timeout=30)

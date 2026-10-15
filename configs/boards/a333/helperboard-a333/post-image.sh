@@ -48,6 +48,9 @@ rm -f "$BINARIES_DIR/oem.ext4" "$BINARIES_DIR/oemA.ext4" "$BINARIES_DIR/oemB.ext
 mke2fs -q -t ext4 -L oem -d "$OEM_ROOT" "$BINARIES_DIR/oem.ext4" "$OEM_SIZE"
 copy_slot_image oem.ext4 oemA.ext4 oemB.ext4
 
+# Separate non-A/B factory payload; never put credentials into a RAUC bundle.
+sh "$PROJECT_ROOT/scripts/make-a333-credentials-image.sh" "$BINARIES_DIR/credentials.ext4"
+
 if [ -f "$BINARIES_DIR/Image" ]; then
 	cp -f "$BINARIES_DIR/Image" "$BINARIES_DIR/Image.A"
 	cp -f "$BINARIES_DIR/Image" "$BINARIES_DIR/Image.B"

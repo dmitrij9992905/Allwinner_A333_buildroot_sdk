@@ -4,21 +4,11 @@ set -eu
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 umask 022
+. /usr/libexec/a333-storage.sh
 
 userdata_device()
 {
-    device="$(sed -n 's/.*[[:space:]]userdata=\([^[:space:]]*\).*/\1/p' /proc/cmdline)"
-    if [ -n "$device" ] && [ -b "$device" ]; then
-        printf '%s\n' "$device"
-        return 0
-    fi
-    for link in /dev/disk/by-partlabel/userdata /dev/disk/by-name/userdata /dev/mmcblk0p10; do
-        if [ -e "$link" ]; then
-            readlink -f "$link"
-            return 0
-        fi
-    done
-    return 1
+    a333_partition_device userdata
 }
 
 wait_for_userdata()
@@ -159,7 +149,7 @@ mount_userdata()
     done
     prepare_userdata_filesystem "$device" || return 1
     if command -v a333-expand-userdata >/dev/null 2>&1; then
-        if a333-expand-userdata; then
+        if A333_USERDATA_PARTITION="$device" a333-expand-userdata; then
             :
         else
             rc=$?

@@ -60,6 +60,15 @@ size = 16384
     user_type    = 0x8000
 
 [partition]
+    name         = credentials
+    ; Factory identity/cloud payload, outside A/B OTA and userdata reset.
+    size         = 32768
+    downloadfile = "credentials.fex"
+    user_type    = 0x8000
+    keydata      = 1
+    verify       = 1
+
+[partition]
     name         = userdata
     ; Start with a 1 GiB userdata partition. First boot removes the unused
     ; UDISK/service tail and grows this GPT partition to the last usable sector.

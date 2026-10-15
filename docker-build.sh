@@ -28,7 +28,7 @@ fi
 # Optional RAUC settings are passed through when supplied by the caller. Use
 # paths visible inside the container (for example /workspace/keys/prod.key.pem).
 for env_name in A333_RAUC_KEY A333_RAUC_CERT A333_RAUC_KEY_DIR \
-    A333_RAUC_BUNDLE A333_RAUC_VERSION A333_RAUC_BUNDLE_NAME; do
+    A333_RAUC_BUNDLE A333_RAUC_VERSION A333_RAUC_BUNDLE_NAME A333_CREDENTIALS_ROOT; do
     if [[ -v "$env_name" ]]; then
         run_args+=(--env "$env_name=${!env_name}")
     fi

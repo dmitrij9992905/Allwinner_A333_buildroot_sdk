@@ -1,0 +1,12 @@
+UNPROVISIONED DEVICE
+
+This image deliberately contains no device identity, shared secret or cloud key.
+Factory provisioning replaces the entire credentials partition per device.
+Suggested layout (the cloud application defines the final schema):
+  device.json           serial number, device ID and cloud endpoint
+  cloud/client.crt.pem  per-device client certificate
+  cloud/client.key.pem  per-device private key
+  cloud/ca.crt.pem      cloud CA certificate
+
+The runtime mounts this partition at /credentials read-only. Cloud applications
+must refuse authentication if their required identity files are missing.

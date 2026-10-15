@@ -126,9 +126,10 @@ copy_payload rootfsA.ext4 rootfsA.fex
 copy_payload rootfsB.ext4 rootfsB.fex
 copy_payload oemA.ext4 oemA.fex
 copy_payload oemB.ext4 oemB.fex
+copy_payload credentials.ext4 credentials.fex
+chmod 0600 credentials.fex
 
-# Keep the userdata image small. The partition itself is full-size in the GPT;
-# a333-mount-userdata grows this ext4 filesystem to the partition on first boot.
+# Keep the userdata image small; first boot grows its partition and filesystem.
 truncate -s 32M userdata.fex
 mkfs.ext4 -F -L userdata userdata.fex >/dev/null
 

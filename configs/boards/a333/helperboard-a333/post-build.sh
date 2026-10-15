@@ -164,6 +164,12 @@ fi
 install -d -m 0755 "$TARGET_DIR/etc/systemd/system/multi-user.target.wants"
 install -d -m 0755 "$TARGET_DIR/etc/systemd/system/local-fs.target.wants"
 install -d -m 0755 "$TARGET_DIR/etc/systemd/system/sysinit.target.wants"
+install -d -m 0700 "$TARGET_DIR/credentials"
+for executable in a333-mount-credentials a333-provision-credentials; do
+    chmod 0755 "$TARGET_DIR/usr/sbin/$executable"
+done
+ln -sfn ../a333-credentials.service \
+    "$TARGET_DIR/etc/systemd/system/multi-user.target.wants/a333-credentials.service"
 if [ "$PROFILE" != headless ]; then
     if [ ! -f "$TARGET_DIR/etc/systemd/system/a333-touch-diag.service" ] ||
        [ ! -x "$TARGET_DIR/usr/sbin/a333-touch-diag" ]; then

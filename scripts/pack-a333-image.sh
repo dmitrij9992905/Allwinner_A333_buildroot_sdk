@@ -33,7 +33,7 @@ if grep -q '^BR2_A333_KERNEL_DEBUG_LOGS=y$' "$CONFIG_FILE"; then
 fi
 PACK_ENV="$PACK_ROOT/device/config/chips/a333/configs/pro/dragonboard/env.cfg"
 
-for input in boot.img u-boot.bin board.dtb rootfsA.ext4 rootfsB.ext4 oemA.ext4 oemB.ext4; do
+for input in boot.img u-boot.bin board.dtb rootfsA.ext4 rootfsB.ext4 oemA.ext4 oemB.ext4 credentials.ext4; do
 	if [ ! -f "$BINARIES_DIR/$input" ]; then
 		echo "pack-a333-image: missing $BINARIES_DIR/$input" >&2
 		exit 1
@@ -157,5 +157,7 @@ fi
 # The vendor container includes large zero-filled partitions. Preserve its
 # bytes without allocating a second full flash-sized file on the host.
 cp --sparse=always -f "$image" "$BINARIES_DIR/a333-helperboard-full.img"
+# A factory-customized full image can contain device private keys.
+chmod 0600 "$image" "$BINARIES_DIR/a333-helperboard-full.img"
 cp -f "$PACK_OUT_DIR/sys_partition.fex" "$BINARIES_DIR/a333-helperboard-sys_partition.fex"
 echo "pack-a333-image: created $BINARIES_DIR/a333-helperboard-full.img"

@@ -2,14 +2,15 @@
 set -eu
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
+. /usr/libexec/a333-storage.sh
 if [ "${1:-}" != --confirm ]; then
     echo "Usage: a333-factory-reset --confirm" >&2
     echo "This reformats and reinitialises userdata." >&2
     exit 2
 fi
-device=$(sed -n 's/.*[[:space:]]userdata=\([^[:space:]]*\).*/\1/p' /proc/cmdline || true)
-[ -b "$device" ] || device=/dev/mmcblk0p10
-/usr/sbin/a333-mount-userdata stop || true
+device=$(a333_partition_device userdata) || { echo "a333-factory-reset: named userdata partition unavailable" >&2; exit 1; }
+# Do not format if any application keeps a userdata bind mount busy.
+/usr/sbin/a333-mount-userdata stop
 [ -b "$device" ] || { echo "a333-factory-reset: userdata device unavailable" >&2; exit 1; }
 mkfs.ext4 -F -L userdata "$device" >/dev/null
 /usr/sbin/a333-mount-userdata start

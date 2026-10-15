@@ -62,6 +62,13 @@ The partition sizes in `sys_partition-ab.fex` are a starting point for a 16 GiB
 device, not a final production layout. They must be checked against the actual
 eMMC capacity and the board vendor's flashing tool before use.
 
+All profiles also have a single factory `credentials` partition (16 MiB, p10),
+mounted at `/credentials` read-only with journal replay disabled. It is outside
+RAUC slots and factory reset. Userdata is p11 and expands into the remaining
+space; GPT-name lookup also supports old images with userdata at p10.
+The default credentials image is unprovisioned. See the main README for the
+per-device image generator, replacement helper and full-flash migration warning.
+
 ## RAUC status
 
 RAUC is enabled as a Buildroot package and uses a custom bootloader backend in

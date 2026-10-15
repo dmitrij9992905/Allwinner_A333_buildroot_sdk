@@ -43,6 +43,7 @@ class UserdataSafetyTest(unittest.TestCase):
 
     def prepare(self, fs="ext4", probe_rc=0, resize_rc=0, mkfs_rc=0, fsck_rc=0):
         source = SCRIPT.read_text().split('case "${1:-start}" in', 1)[0]
+        source = source.replace('. /usr/libexec/a333-storage.sh', '')
         source = source.replace("/usr/libexec/a333-userdata-is-blank", shlex.quote(str(CHECKER)))
         # Run only filesystem preparation, with mock tools and a regular image.
         source += '\nPATH=' + shlex.quote(str(self.bin) + ":/usr/bin:/bin")

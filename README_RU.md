@@ -826,7 +826,9 @@ RAUC bundle не предназначен для первичной прошив
 - [`sys_partition-ab.fex`](configs/boards/a333/helperboard-a333/sys_partition-ab.fex) — карта этого проекта с A/B-разделами.
 
 В A/B-карте разделы имеют номера: `p1` boot-resource, `p2` env, `p3`
-env-redund, `p4/p5` bootA/bootB, `p6/p7` rootfsA/rootfsB, `p8/p9` oemA/oemB.
+env-redund, `p4/p5` bootA/bootB, `p6/p7` rootfsA/rootfsB, `p8/p9` oemA/oemB,
+`p10` credentials (16 МиБ), `p11` userdata (изначально 1 ГиБ, расширяется
+при первом запуске).
 Размеры в `sys_partition-ab.fex` указаны в секторах по 512 байт, кроме
 `mbr.size`, который задаётся в килобайтах.
 
@@ -846,6 +848,139 @@ oemA/oemB. Его нужно передать штатному Allwinner-фле�
 Отдельные `rootfs*.ext4`, `oem*.ext4`, `boot.img` и `.fex` полезны для
 диагностики и ручной прошивки, но не заменяют полный образ при первой
 установке. `a333-helperboard.raucb` на пустую плату записывать нельзя.
+
+### Заводские credentials (все шесть профилей сборки)
+
+Отдельный GPT-раздел `credentials` монтируется в `/credentials` с параметрами
+`ro,noload,nodev,nosuid,noexec,noatime`. Он не входит в A/B, отсутствует в
+RAUC-бандлах и не затрагивается сбросом настроек или расширением userdata.
+`noload` запрещает запись при восстановлении журнала ext4 даже при read-only
+монтировании. Отсутствующий или повреждённый раздел не форматируется автоматически.
+
+Сборка создаёт `output/profiles/<профиль>/images/credentials.ext4`: образ ext4
+размером 16 МиБ без журнала. По умолчанию внутри только README о том, что
+устройство не персонализировано, **без общей идентичности и production-секретов**.
+На заводе подготавливаются индивидуальные файлы, например `device.json`,
+`cloud/client.crt.pem`, `cloud/client.key.pem`, `cloud/ca.crt.pem`. Точную схему
+определяет облачное приложение; сам протокол авторизации этим разделом не
+реализуется. Владелец файлов root, права каталогов 0700, файлов 0600.
+Заводские секреты не следует добавлять в Git.
+
+Создать отдельный персональный образ без пересборки прошивки (пути внутри Docker):
+
+```sh
+./docker-build.sh sh /workspace/scripts/make-a333-credentials-image.sh \
+    /workspace/output/credentials-device-001.ext4 /workspace/keys/factory/device-001
+```
+
+Или включить персональные данные в полный заводской образ:
+
+```sh
+A333_CREDENTIALS_ROOT=/workspace/keys/factory/device-001 ./build.sh media build
+```
+
+После защищённой передачи отдельного образа на ЦУ остановить облачные клиенты
+и заменить **только** раздел credentials:
+
+```sh
+a333-provision-credentials --confirm /run/credentials-device-001.ext4
+findmnt --mountpoint /credentials
+```
+
+Утилита требует root, проверяет тип, метку, размер и файловую систему образа,
+размонтирует раздел, записывает его, проверяет SHA-256 обратным чтением и
+снова монтирует read-only. Старые credentials при этом заменяются; операция
+не атомарна при отключении питания — потребуется повторная заводская запись.
+Для временного файла лучше использовать `/run` (RAM), затем удалить его по правилам обращения с секретами.
+Read-only не означает шифрование или защиту от привилегированного root.
+
+Облачным systemd-сервисам следует задать `Requires=a333-credentials.service`
+и `After=a333-credentials.service` и проверять необходимые файлы идентификации.
+
+**Переход на новую разметку:** ранее `p10` был userdata. OTA не создаёт и не
+перемещает разделы; новая карта требует полной прошивки после резервного
+копирования userdata и последующей заводской персонализации. Поиск в runtime
+идёт по GPT-именам: OTA на старой карте сохраняет userdata и не принимает
+его за credentials. Номера boot/rootfs/OEM A/B не изменились. Установлен
+vendor-флаг `keydata=1`, но полный erase/repartitioning флешера всё равно
+может уничтожить credentials — сохранность при полной прошивке не гарантируется.
+
+#### Восстановление после дублирования userdata в GPT
+
+Вендорский U-Boot с `CONFIG_LAST_PARTITION_NAME="userdata"` переименовывает
+служебный `UDISK` в `userdata`. Тогда на новой карте `p11` (1 ГиБ) и
+хвостовой `p12` получают одинаковое имя, и сервис безопасно отказывается
+выбирать раздел. Общий `uboot-ab.config` теперь закрепляет имя `UDISK`
+для всех шести профилей. Для гарантированной пересборки существующего U-Boot:
+
+```sh
+./build.sh media build uboot-reconfigure
+./build.sh media build
+```
+
+Для других профилей заменить `media` их именем. RAUC-бандл содержит ядро/DTB,
+rootfs и OEM, но **не обновляет сам U-Boot**. Полная прошивка обновляет его,
+но может уничтожить userdata/credentials; для текущего сбоя она не требуется.
+
+Следующие команды на ЦУ предназначены **только для подтверждённой карты**:
+`p10` credentials, `p11` userdata с ext4, `p12` ошибочно назван userdata и
+занимает оставшийся хвост. Не применять к другой разметке. Сначала остановить
+повторные попытки запуска и сохранить GPT (это не резервная копия файлов):
+
+```sh
+systemctl mask --runtime --now a333-userdata.service
+sgdisk --backup=/run/a333-gpt-before-userdata.bin /dev/mmcblk0
+```
+
+Затем проверить **все байты** хвоста. Отсутствие сигнатуры в `blkid` не является
+доказательством пустоты. Чтение примерно 15 ГиБ может занять несколько минут:
+
+```sh
+if python3 /usr/libexec/a333-userdata-is-blank /dev/mmcblk0p12; then
+    sgdisk --change-name=12:UDISK /dev/mmcblk0 &&
+    systemctl unmask --runtime a333-userdata.service &&
+    systemctl reset-failed a333-userdata.service &&
+    systemctl start a333-userdata.service
+else
+    echo 'Хвост не доказан пустым: ничего не изменено, сначала сохранить/исследовать данные.'
+fi
+```
+
+При успешной проверке меняется только имя `p12`; затем штатный сервис удаляет
+запись пустого хвоста из GPT, расширяет `p11` и автоматически перезагружает
+плату один раз. Существующая ext4 и её UUID сохраняются, `mkfs` не запускается,
+credentials не изменяется. После удаления хвоста старому U-Boot уже нечего
+переименовывать. После перезагрузки проверить `findmnt /userdata`, `df -h /userdata`
+и `systemctl status a333-userdata.service --no-pager`. Если проверка пустоты
+не прошла, сервис остаётся временно замаскированным: не удалять `p12` и не
+форматировать `p11`, сначала исследовать данные. Маска исчезнет после перезагрузки.
+
+Если после восстановления имени появляются `Could not create partition 11`
+и `Error encountered; not saving changes`, а ext4 проверяется как `clean`,
+проверьте старый скрипт `a333-expand-userdata`: ранний вариант запускал
+`sgdisk -e`. Он несовместим с асимметричным резервом Allwinner (первый
+допустимый сектор 73728, но небольшой резерв в конце диска). Исправленный
+скрипт не перемещает резервную GPT и использует её заявленный последний
+допустимый сектор, а не предполагаемые `total-34` или `disk-first_usable`.
+
+Для текущей подтверждённой карты, где пустой `p12` уже переименован в `UDISK`,
+достаточно убрать `-e` в старом скрипте на ЦУ (rootfs должен быть доступен
+для записи). Не форматировать и не удалять разделы вручную:
+
+```sh
+systemctl mask --runtime --now a333-userdata.service &&
+cp -p /usr/sbin/a333-expand-userdata /run/a333-expand-userdata.before-fix &&
+sed -i 's/^sgdisk -e -a 1 /sgdisk -a 1 /' /usr/sbin/a333-expand-userdata &&
+grep '^sgdisk -a 1 ' /usr/sbin/a333-expand-userdata &&
+systemctl unmask --runtime a333-userdata.service &&
+systemctl reset-failed a333-userdata.service &&
+systemctl start a333-userdata.service
+```
+
+На этой карте прежний расчёт `total-34` совпадает с реальной границей GPT;
+поэтому для восстановления достаточно удаления `-e`. В новом SDK сам расчёт
+тоже исправлен. При успехе произойдёт автоматическая перезагрузка, затем
+проверить `findmnt /userdata` и `df -h /userdata`.
 
 ## Проверка FEL и sunxi-fel
 

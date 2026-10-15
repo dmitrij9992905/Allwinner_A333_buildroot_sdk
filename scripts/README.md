@@ -12,6 +12,13 @@ The ignored `toolchains/` directory contains the copied Allwinner SDK Linaro
 toolchain used only for the 32-bit vendor U-Boot build. The main Buildroot
 target toolchain remains AArch64/glibc.
 
+`make-a333-credentials-image.sh <output.ext4> [source-directory]` creates a
+root-owned 16 MiB ext4 factory identity image without a journal. The default
+payload is unprovisioned; `A333_CREDENTIALS_ROOT` selects per-device input.
+Only regular files/directories are accepted and original inputs are unchanged.
+The output is packed as `credentials.fex` in full images, never in RAUC bundles.
+See the main README for provisioning and partition-layout migration warnings.
+
 `patch-a333-efex-uboot.py` prepares the vendor U-Boot header for running from
 FEL in USB EFEX mode. It updates `work_mode`, the detected DRAM size and the
 Allwinner additive checksum.

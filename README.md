@@ -832,7 +832,8 @@ The project contains partition maps copied from the original SDK:
 
 In the A/B map, the partition numbers are: `p1` boot-resource, `p2` env,
 `p3` env-redund, `p4/p5` bootA/bootB, `p6/p7` rootfsA/rootfsB, and
-`p8/p9` oemA/oemB. Sizes in `sys_partition-ab.fex` are specified in
+`p8/p9` oemA/oemB, `p10` credentials (16 MiB), and `p11` userdata
+(initially 1 GiB, expanded on first boot). Sizes in `sys_partition-ab.fex` are specified in
 512-byte sectors, except for `mbr.size`, which is specified in kilobytes.
 
 The following image must be used for the initial flash:
@@ -855,6 +856,139 @@ Individual `rootfs*.ext4`, `oem*.ext4`, `boot.img`, and `.fex` files
 are useful for diagnostics and manual flashing, but they do not replace the
 complete image during initial installation. Do not flash
 `a333-helperboard.raucb` to an empty board.
+
+### Factory device credentials (all six build profiles)
+
+The separate `credentials` GPT partition is mounted at `/credentials` using
+`ro,noload,nodev,nosuid,noexec,noatime`. It is not an A/B slot, is not included
+in RAUC bundles, and is not touched by factory reset or userdata expansion.
+`noload` prevents ext4 journal replay from writing during a read-only mount.
+Missing or invalid credentials are never automatically formatted or generated.
+
+Each build produces `output/profiles/<profile>/images/credentials.ext4`, a
+16 MiB ext4 image without a journal. The default payload contains only an
+unprovisioned README, **no shared device identity or production secrets**.
+The factory supplies per-device files, for example `device.json`,
+`cloud/client.crt.pem`, `cloud/client.key.pem`, and `cloud/ca.crt.pem`.
+The final file schema is defined by the cloud application; cloud authentication
+itself is not implemented by adding this partition. Files are root-owned,
+directories mode 0700 and files mode 0600. Do not commit factory secrets.
+
+Generate only a per-device image, without rebuilding the firmware (paths must
+be visible inside the container):
+
+```sh
+./docker-build.sh sh /workspace/scripts/make-a333-credentials-image.sh \
+    /workspace/output/credentials-device-001.ext4 /workspace/keys/factory/device-001
+```
+
+Alternatively, include a device-specific payload in the full factory image:
+
+```sh
+A333_CREDENTIALS_ROOT=/workspace/keys/factory/device-001 ./build.sh media build
+```
+
+After securely transferring that standalone image to the board, stop any cloud
+clients, then replace **only** the named credentials partition:
+
+```sh
+a333-provision-credentials --confirm /run/credentials-device-001.ext4
+findmnt --mountpoint /credentials
+```
+
+The factory helper requires root, validates image type/label/size and filesystem,
+unmounts the partition, writes it, verifies SHA-256 readback and mounts it
+read-only again. This operation is destructive to the previous credentials and
+is not power-loss atomic; an interrupted operation requires factory reprovisioning.
+Prefer `/run` (RAM) for staging; remove the image afterwards using your factory secret-handling policy.
+Read-only mounting is not encryption or protection against privileged root access.
+
+Cloud service units should use `Requires=a333-credentials.service` and
+`After=a333-credentials.service`, and validate their required identity files.
+
+**Layout migration:** existing images used `p10` for userdata. An OTA does not
+create or move partitions; installing the new map requires a full flash after
+backing up userdata, followed by factory provisioning. Runtime lookup uses GPT
+names, so an OTA on the old map preserves its existing userdata and does not
+mistake it for credentials. Rootfs/OEM/boot A/B numbers remain unchanged.
+The vendor `keydata=1` flag is set, but full-chip erase/repartitioning can still
+destroy credentials: never assume a full vendor flash preserves them.
+
+#### Recovering a duplicate userdata GPT label
+
+Vendor U-Boot configured with `CONFIG_LAST_PARTITION_NAME="userdata"` renames
+the service `UDISK` tail to `userdata`. This duplicates p11/p12 on the new map,
+and runtime lookup correctly refuses to choose a partition. The shared
+`uboot-ab.config` now pins `CONFIG_LAST_PARTITION_NAME="UDISK"` for all profiles.
+Force a rebuild of an existing U-Boot with:
+
+```sh
+./build.sh media build uboot-reconfigure
+./build.sh media build
+```
+
+Use the desired profile name instead of `media`. RAUC updates kernel/DTB,
+rootfs and OEM, **not U-Boot itself**. A full flash updates U-Boot but can erase
+userdata/credentials; it is unnecessary for recovering this current fault.
+
+The following target commands apply **only to the confirmed affected map**:
+p10 credentials, p11 ext4 userdata, and p12 the remaining tail mislabeled
+userdata. Do not apply them to a different layout. Stop automatic retries and
+save GPT metadata (this is not a file backup):
+
+```sh
+systemctl mask --runtime --now a333-userdata.service
+sgdisk --backup=/run/a333-gpt-before-userdata.bin /dev/mmcblk0
+```
+
+Check **all tail bytes**, not just filesystem signatures. Reading about 15 GiB
+may take several minutes:
+
+```sh
+if python3 /usr/libexec/a333-userdata-is-blank /dev/mmcblk0p12; then
+    sgdisk --change-name=12:UDISK /dev/mmcblk0 &&
+    systemctl unmask --runtime a333-userdata.service &&
+    systemctl reset-failed a333-userdata.service &&
+    systemctl start a333-userdata.service
+else
+    echo 'Tail is not provably blank: unchanged; back up/investigate its data first.'
+fi
+```
+
+After successful verification, only p12's name is changed. The normal service
+then removes the empty tail entry, expands p11 and automatically reboots once.
+The existing ext4 and its UUID are preserved, no mkfs is run and credentials
+is unchanged. Once the tail is removed, old U-Boot has nothing left to rename.
+After reboot check `findmnt /userdata`, `df -h /userdata`, and
+`systemctl status a333-userdata.service --no-pager`. If blank verification fails,
+the service stays runtime-masked: do not delete p12 or format p11; investigate
+the data first. The runtime mask disappears on reboot.
+
+If recovery then fails with `Could not create partition 11` and
+`Error encountered; not saving changes`, while ext4 is reported clean, an
+early `a333-expand-userdata` script may still use `sgdisk -e`. That flag assumes
+symmetric GPT reservations, unlike Allwinner's 73728-sector front reservation
+and small end reservation. The fixed script leaves backup GPT placement alone
+and uses the declared GPT last usable sector, not `total-34` or
+`disk-first_usable` assumptions.
+
+For the confirmed current layout, with the verified empty p12 already renamed
+UDISK, remove `-e` from the old target script (requires a writable rootfs).
+Do not format or manually delete partitions:
+
+```sh
+systemctl mask --runtime --now a333-userdata.service &&
+cp -p /usr/sbin/a333-expand-userdata /run/a333-expand-userdata.before-fix &&
+sed -i 's/^sgdisk -e -a 1 /sgdisk -a 1 /' /usr/sbin/a333-expand-userdata &&
+grep '^sgdisk -a 1 ' /usr/sbin/a333-expand-userdata &&
+systemctl unmask --runtime a333-userdata.service &&
+systemctl reset-failed a333-userdata.service &&
+systemctl start a333-userdata.service
+```
+
+On this map the old `total-34` boundary matches GPT, so removing `-e` is enough
+for recovery; the SDK also fixes boundary discovery. Successful expansion
+automatically reboots once; check `findmnt /userdata` and `df -h /userdata`.
 
 ## FEL and sunxi-fel verification
 
